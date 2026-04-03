@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
+    <script src="/static/js/chart_factory.js"></script>
+    <title>Pi Sensor Hub</title>
+</head>
+<body>
+    <h1>Local Raspberry Pi Server</h1>
+    <p>Monitoring: <strong>{{ sensor_id }}</strong></p>
+
+    <div id="data-container">
+        <p>Current Temp: <span id="temp">Fetching...</span></p>
+        <p>Average Temp: <span id="avg-temp">Fetching...</span></p>
+    </div>
+
+    <div style="width: 400px; margin: auto; height: 200px; position: relative;">
+        <canvas id="moistureChart"></canvas>
+    </div>
+    <div style="width: 400px; margin: auto; height: 200px; position: relative;">
+        <canvas id="lightChart"></canvas>
+    </div>
+    <div style="width: 400px; margin: auto; height: 200px; position: relative;">
+        <canvas id="humidityChart"></canvas>
+    </div>
+    <div style="width: 400px; margin: auto; height: 200px; position: relative;">
+        <canvas id="pressureChart"></canvas>
+    </div>
+    <div style="width: 400px; margin: auto; height: 200px; position: relative;">
+        <canvas id="temperatureChart"></canvas>
+    </div>
+
+    <script id="chart-data" type="application/json">
+        {{ time_series | tojson }}
+    </script>
+
+    <script>
+        // Your JavaScript still fetches from your /api/sensors endpoint
+        async function updateData() {
+            const res = await fetch('/api/sensors');
+            const data = await res.json();
+            document.getElementById('temp').innerText = data.temperature + "°C";
+            
+            const avgRes = await fetch('/api/sensors/last_week_average');
+            const avgData = await avgRes.json();
+            document.getElementById('avg-temp').innerText = avgData.temperature + "°C";
+        }
+        setInterval(updateData, 5000); // Update every 5 seconds
+
+        const rawData = JSON.parse(
+            document.getElementById('chart-data').textContent
+        );
+
+        // Extract labels (hours) and data for each line
+        const labels = rawData.map(d => d.time);
+        const lightData = rawData.map(d => d.light);
+        const tempData = rawData.map(d => d.temp);
+        const moistureData = rawData.map(d => d.moisture);
+        const humidityData = rawData.map(d => d.humidity);
+        const pressureData = rawData.map(d => d.pressure);
+
+        const chartFactory = new ChartFactory();
+
+        const chartInitData = [
+            new ChartInitData(
+                document.getElementById('moistureChart').getContext('2d'),
+                'Soil Moisture', 
+                labels, 
+                moistureData, 
+                22,
+                '%'
+            ),
+            new ChartInitData(
+                document.getElementById('lightChart').getContext('2d'),
+                'Light Intensity', 
+                labels, 
+                lightData, 
+                22,
+                '%'
+            ),
+            new ChartInitData(
+                document.getElementById('humidityChart').getContext('2d'),
+                'Humidity', 
+                labels, 
+                humidityData, 
+                22,
+                '%'
+            ),
+            new ChartInitData(
+                document.getElementById('pressureChart').getContext('2d'),
+                'Pressure', 
+                labels, 
+                pressureData, 
+                22,
+                'hPa'
+            ),
+            new ChartInitData(
+                document.getElementById('temperatureChart').getContext('2d'),
+                'Temperature', 
+                labels, 
+                tempData, 
+                22,
+                '°C'
+            )
+        ];
+
+        for (const initData of chartInitData) {
+            chartFactory.createHealthChart(initData);
+        }
+
+    </script>
+</body>
+</html>

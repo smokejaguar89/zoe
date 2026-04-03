@@ -1,0 +1,21 @@
+# Web Framework & Server
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+
+# Templating & Static Files
+jinja2>=3.1.0
+
+# Database & ORM
+sqlmodel>=0.0.14
+# Note: sqlite3 is built-in to Python, no pip install needed
+
+# Background Tasks & Scheduling
+apscheduler>=3.10.0
+
+# Testing
+pytest>=7.0.0
+httpx>=0.24.0
+
+# Optional: Hardware (Uncomment based on your specific sensors)
+# RPi.GPIO      # Standard GPIO library
+# adafruit-blinka # If using CircuitPython libraries
