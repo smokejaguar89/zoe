@@ -2,10 +2,10 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 from app.models.domain.sensor_snapshot import SensorSnapshot
-from app.services.database import Database
+from app.db.database import Database
 
 
-@patch("app.services.database.SQLModel.metadata.create_all")
+@patch("app.db.database.SQLModel.metadata.create_all")
 def test_init_creates_database_tables(create_all) -> None:
     db = Database()
 
@@ -14,7 +14,7 @@ def test_init_creates_database_tables(create_all) -> None:
     create_all.assert_called_once_with(db.engine)
 
 
-@patch("app.services.database.Session")
+@patch("app.db.database.Session")
 def test_save_sensor_data_adds_and_commits_reading(session_cls) -> None:
     db = Database()
     snapshot = SensorSnapshot(

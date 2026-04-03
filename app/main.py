@@ -1,15 +1,19 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
 
 from app.api import api, views
 from app.hardware.bme280_driver import BME280Driver
 from app.hardware.sparkfun_driver import SparkfunDriver
 from app.hardware.tsl2591_driver import TSL2591Driver
-from app.services.database import Database
-from app.services.scheduler import Scheduler
+from app.db.database import Database
+from app.scheduler.scheduler import Scheduler
 from app.services.sensor_service import SensorService
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 
 # import app.services.hardware as hardware # Placeholder for your GPIO setup
 

@@ -7,6 +7,10 @@ from app.hardware.sparkfun_driver import SparkfunDriver
 from app.hardware.tsl2591_driver import TSL2591Driver
 from app.models.domain.sensor_snapshot import SensorSnapshot
 
+MOISTURE_THRESHOLD = 30.0
+LIGHT_THRESHOLD = 30.0
+TEMPERATURE_THRESHOLD = 25.0
+
 
 class SensorService:
     def __init__(

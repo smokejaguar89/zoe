@@ -2,7 +2,7 @@ import asyncio
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from app.services.database import Database
+from app.db.database import Database
 from app.services.sensor_service import SensorService
 
 scheduler = BackgroundScheduler()

@@ -12,6 +12,10 @@ sqlmodel>=0.0.14
 # Background Tasks & Scheduling
 apscheduler>=3.10.0
 
+# AI / Gemini
+google-genai>=1.10.0
+python-dotenv>=1.0.1
+
 # Testing
 pytest>=7.0.0
 httpx>=0.24.0

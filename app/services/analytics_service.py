@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from fastapi.params import Depends
 
 from app.models.domain.sensor_snapshot import SensorSnapshot
-from app.services.database import Database
+from app.db.database import Database
 
 
 class CalculationError(Exception):

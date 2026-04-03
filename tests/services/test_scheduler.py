@@ -1,7 +1,7 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.scheduler import Scheduler
+from app.scheduler.scheduler import Scheduler
 
 
 def test_collect_data_job_gets_and_saves_snapshot() -> None:
@@ -21,8 +21,8 @@ def test_collect_data_job_gets_and_saves_snapshot() -> None:
     database.save_snapshot.assert_awaited_once_with(snapshot)
 
 
-@patch("app.services.scheduler.scheduler.start")
-@patch("app.services.scheduler.scheduler.add_job")
+@patch("app.scheduler.scheduler.scheduler.start")
+@patch("app.scheduler.scheduler.scheduler.add_job")
 def test_start_adds_job_and_starts_scheduler(
     add_job,
     start,
@@ -42,7 +42,7 @@ def test_start_adds_job_and_starts_scheduler(
     start.assert_called_once()
 
 
-@patch("app.services.scheduler.scheduler.shutdown")
+@patch("app.scheduler.scheduler.scheduler.shutdown")
 def test_stop_shuts_down_scheduler(shutdown) -> None:
     scheduler_service = Scheduler(
         sensor_service=MagicMock(),

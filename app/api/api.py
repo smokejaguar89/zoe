@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.dto.get_sensor_data_response import GetSensorDataResponse
-from app.models.dto.get_time_series_response import GetTimeSeriesResponse, SensorSnapshotDto
+from app.models.dto.get_time_series_response import (
+    GetTimeSeriesResponse, SensorSnapshotDto)
 from app.services.analytics_service import AnalyticsService, CalculationError
 from app.services.sensor_service import SensorService
 
