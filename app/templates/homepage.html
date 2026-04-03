@@ -1,34 +1,106 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    />
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playwrite+IE:wght@100..400&display=swap"
+        rel="stylesheet"
+    />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
     <script src="/static/js/chart_factory.js"></script>
     <title>Pi Sensor Hub</title>
+    <style>
+        body {
+            font-family: "Playwrite IE", cursive;
+        }
+        .generated-image-section {
+            width: 600px;
+            margin: 20px auto;
+            text-align: center;
+        }
+
+        .generated-image-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            max-width: 560px;
+            padding: 18px;
+            border: 10px solid #7a5a3a;
+            background: linear-gradient(145deg, #9b7a4f, #6a4c30);
+            box-shadow:
+                0 10px 24px rgba(0, 0, 0, 0.45),
+                inset 0 0 0 2px rgba(255, 255, 255, 0.25),
+                inset 0 0 0 8px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .generated-image {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            display: block;
+            border: 12px solid #f5efe3;
+            box-shadow:
+                inset 0 0 0 1px #d8cfbf,
+                0 4px 10px rgba(0, 0, 0, 0.25);
+            box-sizing: border-box;
+        }
+
+        .generated-image-overlay {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            padding: 8px 10px;
+            border-radius: 6px;
+            text-align: left;
+            font-size: 12px;
+            line-height: 1.4;
+            font-family: "Playwrite IE", cursive;
+        }
+
+        .chart-container {
+            width: 400px;
+            margin: auto;
+            height: 200px;
+            position: relative;
+        }
+    </style>
 </head>
 <body data-time-series='{{ (time_series or []) | tojson | forceescape }}'>
-    <h1>Local Raspberry Pi Server</h1>
-    <p>Monitoring: <strong>{{ sensor_id }}</strong></p>
-
-    <div id="data-container">
-        <p>Current Temp: <span id="temp">Fetching...</span></p>
-        <p>Average Temp: <span id="avg-temp">Fetching...</span></p>
-    </div>
-
     {% if generated_image_path %}
-    <div style="width: 400px; margin: 20px auto; text-align: center;">
-        <h3>Generated Sunflower</h3>
-        <img
-            src="{{ generated_image_path }}"
-            alt="Generated sunflower image"
-            style="max-width: 100%; height: auto; border-radius: 8px;"
-        />
+    <div class="generated-image-section">
+        <h3>How much does your plant hate you?</h3>
+        <div class="generated-image-wrapper">
+            <img
+                src="{{ generated_image_path }}"
+                alt="Generated sunflower image"
+                class="generated-image"
+            />
+            <div class="generated-image-overlay">
+                <div>#1 Generated: {{ generated_image_generated_at }}</div>
+                <div>#2 Moisture: {{ sensor_data.moisture | round(1) }}</div>
+                <div>#3 Temperature: {{ sensor_data.temperature | round(1) }}</div>
+                <div>#4 Humidity: {{ sensor_data.humidity | round(1) }}</div>
+            </div>
+        </div>
     </div>
     {% endif %}
 
     {% set chart_ids = ['moisture', 'light', 'humidity', 'pressure', 'temperature'] %}
     {% for chart_id in chart_ids %}
-    <div style="width: 400px; margin: auto; height: 200px; position: relative;">
+    <div class="chart-container">
         <canvas id="{{ chart_id }}Chart"></canvas>
     </div>
     {% endfor %}

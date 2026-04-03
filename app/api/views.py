@@ -23,11 +23,18 @@ async def load_homepage(
         gemini_service=Depends(GeminiService)) -> HTMLResponse:
     # Create a new image with gemini
     generated_image_url = None
+    generated_image_generated_at = None
     try:
-        image_path = await gemini_service.generate_and_save_image()
+        image_path = await gemini_service.get_or_generate_image(
+            max_age_minutes=30
+        )
         generated_image_url = f"/static/img/gemini/{image_path.name}"
+        generated_image_generated_at = image_path.stem.replace(
+            "sunflower_", "", 1
+        )
     except GeminiServiceError:
         generated_image_url = None
+        generated_image_generated_at = None
 
     # Data you want to pass to your HTML
     sensor_snapshot = await sensor_service.get_snapshot()
@@ -59,5 +66,6 @@ async def load_homepage(
             "sensor_data": sensor_snapshot,
             "time_series": time_series,
             "generated_image_path": generated_image_url,
+            "generated_image_generated_at": generated_image_generated_at,
         }
     )

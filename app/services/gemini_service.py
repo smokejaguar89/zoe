@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi.params import Depends
@@ -51,6 +51,15 @@ class GeminiService:
         output_path = self.generated_image_dir / filename
         output_path.write_bytes(image_bytes)
         return output_path
+
+    async def get_or_generate_image(
+            self,
+            max_age_minutes: int = 30) -> Path:
+        recent_image = self._get_most_recent_image(max_age_minutes)
+        if recent_image is not None:
+            return recent_image
+
+        return await self.generate_and_save_image()
 
     async def _generate_image(self) -> bytes:
         if not self.api_key:
@@ -121,6 +130,25 @@ class GeminiService:
 
     def _current_timestamp_string(self) -> str:
         return datetime.now().strftime("%Y-%m-%d:%H:%M")
+
+    def _get_most_recent_image(self, max_age_minutes: int) -> Path | None:
+        if not self.generated_image_dir.exists():
+            return None
+
+        image_paths = list(self.generated_image_dir.glob("sunflower_*.jpg"))
+        if not image_paths:
+            return None
+
+        newest_image = max(image_paths, key=lambda path: path.stat().st_mtime)
+        newest_modified_at = datetime.fromtimestamp(
+            newest_image.stat().st_mtime
+        )
+        cutoff = datetime.now() - timedelta(minutes=max_age_minutes)
+
+        if newest_modified_at >= cutoff:
+            return newest_image
+
+        return None
 
     def _extract_image_bytes(self, response) -> bytes | None:
         parts = getattr(response, "parts", None)

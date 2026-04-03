@@ -1,4 +1,6 @@
 import asyncio
+import os
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.domain.sensor_snapshot import SensorSnapshot
@@ -66,3 +68,39 @@ def test_generate_and_save_image_writes_expected_jpg_name(tmp_path) -> None:
 
     assert output_path.name == "sunflower_2026-04-03:13:39.jpg"
     assert output_path.read_bytes() == b"jpg-bytes"
+
+
+def test_get_or_generate_image_reuses_recent_image(tmp_path) -> None:
+    service = GeminiService(sensor_service=MagicMock(), api_key="test-key")
+    service.generated_image_dir = tmp_path
+    recent_image = tmp_path / "sunflower_2026-04-03:13:39.jpg"
+    recent_image.write_bytes(b"existing")
+    service.generate_and_save_image = AsyncMock(
+        return_value=tmp_path / "sunflower_new.jpg"
+    )
+
+    output_path = asyncio.run(
+        service.get_or_generate_image(max_age_minutes=30)
+    )
+
+    assert output_path == recent_image
+    service.generate_and_save_image.assert_not_awaited()
+
+
+def test_get_or_generate_image_generates_when_image_is_stale(tmp_path) -> None:
+    service = GeminiService(sensor_service=MagicMock(), api_key="test-key")
+    service.generated_image_dir = tmp_path
+    stale_image = tmp_path / "sunflower_2026-04-03:12:00.jpg"
+    stale_image.write_bytes(b"old")
+    two_hours_ago = time.time() - (2 * 60 * 60)
+    os.utime(stale_image, (two_hours_ago, two_hours_ago))
+
+    new_image = tmp_path / "sunflower_2026-04-03:13:39.jpg"
+    service.generate_and_save_image = AsyncMock(return_value=new_image)
+
+    output_path = asyncio.run(
+        service.get_or_generate_image(max_age_minutes=30)
+    )
+
+    assert output_path == new_image
+    service.generate_and_save_image.assert_awaited_once_with()
