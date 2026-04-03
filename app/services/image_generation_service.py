@@ -4,7 +4,9 @@ from typing import Protocol
 
 from fastapi.params import Depends
 
+from app.db.database import Database
 from app.clients.gemini_client import GeminiClient
+from app.models.domain.generated_image import GeneratedImage
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.sensor_service import (
     LIGHT_THRESHOLD,
@@ -23,9 +25,11 @@ class ImageGenerationService:
     def __init__(
             self,
             sensor_service=Depends(SensorService),
-            image_client: ImageClient = Depends(GeminiClient)):
+            image_client: ImageClient = Depends(GeminiClient),
+            database=Depends(Database)):
         self.sensor_service = sensor_service
         self.image_client = image_client
+        self.database = database
         self.base_image_path = (
             Path(__file__).resolve().parents[1]
             / "static"
@@ -40,16 +44,39 @@ class ImageGenerationService:
         )
 
     async def generate_and_save_image(self) -> Path:
-        prompt = await self._craft_image_prompt()
+        snapshot = await self.sensor_service.get_snapshot()
+        prompt = self._craft_image_prompt(snapshot)
         image_bytes = self.image_client.generate_image(
             prompt=prompt,
             base_image_bytes=self._read_base_image_bytes(),
         )
         self.generated_image_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"sunflower_{self._current_timestamp_string()}.jpg"
+        generated_at = datetime.now()
+        filename = (
+            f"sunflower_{self._timestamp_to_string(generated_at)}.jpg"
+        )
         output_path = self.generated_image_dir / filename
         output_path.write_bytes(image_bytes)
+        await self.database.save_generated_image(
+            filename=filename,
+            generated_at=generated_at,
+            snapshot=snapshot,
+        )
         return output_path
+
+    async def get_latest_generated_image(self) -> GeneratedImage | None:
+        generated_image = await self.database.get_latest_generated_image()
+        if generated_image is not None:
+            return generated_image
+
+        image_path = self.get_most_recent_image()
+        if image_path is None:
+            return None
+
+        return GeneratedImage(
+            filename=image_path.name,
+            generated_at=datetime.fromtimestamp(image_path.stat().st_mtime),
+        )
 
     def get_most_recent_image(self) -> Path | None:
         if not self.generated_image_dir.exists():
@@ -61,9 +88,7 @@ class ImageGenerationService:
 
         return max(image_paths, key=lambda path: path.stat().st_mtime)
 
-    async def _craft_image_prompt(self) -> str:
-        snapshot: SensorSnapshot = await self.sensor_service.get_snapshot()
-
+    def _craft_image_prompt(self, snapshot: SensorSnapshot) -> str:
         prompt = [
             (
                 "Use the provided sunflower painting as the base image. "
@@ -96,5 +121,5 @@ class ImageGenerationService:
     def _read_base_image_bytes(self) -> bytes:
         return self.base_image_path.read_bytes()
 
-    def _current_timestamp_string(self) -> str:
-        return datetime.now().strftime("%Y-%m-%d:%H:%M")
+    def _timestamp_to_string(self, value: datetime) -> str:
+        return value.strftime("%Y-%m-%d:%H:%M")

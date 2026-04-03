@@ -91,9 +91,13 @@
             />
             <div class="generated-image-overlay">
                 <div>#1 Generated: {{ generated_image_generated_at }}</div>
-                <div>#2 Moisture: {{ sensor_data.moisture | round(1) }}</div>
-                <div>#3 Temperature: {{ sensor_data.temperature | round(1) }}</div>
-                <div>#4 Humidity: {{ sensor_data.humidity | round(1) }}</div>
+                {% if generated_image_snapshot %}
+                <div>#2 Moisture: {{ generated_image_snapshot.moisture | round(1) }}</div>
+                <div>#3 Temperature: {{ generated_image_snapshot.temperature | round(1) }}</div>
+                <div>#4 Humidity: {{ generated_image_snapshot.humidity | round(1) }}</div>
+                {% else %}
+                <div>#2 Snapshot data unavailable</div>
+                {% endif %}
             </div>
         </div>
     </div>

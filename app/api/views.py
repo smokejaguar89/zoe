@@ -23,12 +23,18 @@ async def load_homepage(
             ImageGenerationService)) -> HTMLResponse:
     generated_image_url = None
     generated_image_generated_at = None
-    image_path = image_generation_service.get_most_recent_image()
-    if image_path is not None:
-        generated_image_url = f"/static/img/gemini/{image_path.name}"
-        generated_image_generated_at = image_path.stem.replace(
-            "sunflower_", "", 1
+    generated_image_snapshot = None
+    generated_image = await (
+        image_generation_service.get_latest_generated_image()
+    )
+    if generated_image is not None:
+        generated_image_url = (
+            f"/static/img/gemini/{generated_image.filename}"
         )
+        generated_image_generated_at = generated_image.generated_at.strftime(
+            "%Y-%m-%d:%H:%M"
+        )
+        generated_image_snapshot = generated_image.sensor_snapshot
 
     # Data you want to pass to your HTML
     sensor_snapshot = await sensor_service.get_snapshot()
@@ -61,5 +67,6 @@ async def load_homepage(
             "time_series": time_series,
             "generated_image_path": generated_image_url,
             "generated_image_generated_at": generated_image_generated_at,
+            "generated_image_snapshot": generated_image_snapshot,
         }
     )

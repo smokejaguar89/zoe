@@ -38,6 +38,7 @@ async def lifespan(app: FastAPI):
     image_generation_service = ImageGenerationService(
         sensor_service=sensor_service,
         image_client=gemini_client,
+        database=database,
     )
 
     # Initialise scheduler to collect sensor data every minute
