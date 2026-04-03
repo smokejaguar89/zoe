@@ -35,7 +35,7 @@ def test_generate_image_returns_decoded_bytes() -> None:
         "app.services.gemini_service.genai.Client",
         return_value=mock_client,
     ):
-        image_bytes = asyncio.run(service.generate_image())
+        image_bytes = asyncio.run(service._generate_image())
 
     assert image_bytes == b"generated-image"
     sensor_service.get_snapshot.assert_awaited_once_with()
@@ -47,7 +47,7 @@ def test_generate_image_raises_when_no_api_key() -> None:
     service.api_key = None
 
     try:
-        asyncio.run(service.generate_image())
+        asyncio.run(service._generate_image())
     except GeminiServiceError as error:
         assert str(error) == "GEMINI_API_KEY is not configured."
     else:
@@ -57,7 +57,7 @@ def test_generate_image_raises_when_no_api_key() -> None:
 def test_generate_and_save_image_writes_expected_jpg_name(tmp_path) -> None:
     service = GeminiService(sensor_service=MagicMock(), api_key="test-key")
     service.generated_image_dir = tmp_path
-    service.generate_image = AsyncMock(return_value=b"jpg-bytes")
+    service._generate_image = AsyncMock(return_value=b"jpg-bytes")
     service._current_timestamp_string = MagicMock(
         return_value="2026-04-03:13:39"
     )

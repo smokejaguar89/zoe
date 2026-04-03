@@ -23,6 +23,9 @@ env/
 .env.*
 !.env.example
 
+# --- Generated Gemini images ---
+app/static/img/gemini/*.jpg
+
 # --- Local databases / runtime files ---
 *.db
 *.sqlite

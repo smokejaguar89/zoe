@@ -15,6 +15,17 @@
         <p>Average Temp: <span id="avg-temp">Fetching...</span></p>
     </div>
 
+    {% if generated_image_path %}
+    <div style="width: 400px; margin: 20px auto; text-align: center;">
+        <h3>Generated Sunflower</h3>
+        <img
+            src="{{ generated_image_path }}"
+            alt="Generated sunflower image"
+            style="max-width: 100%; height: auto; border-radius: 8px;"
+        />
+    </div>
+    {% endif %}
+
     {% set chart_ids = ['moisture', 'light', 'humidity', 'pressure', 'temperature'] %}
     {% for chart_id in chart_ids %}
     <div style="width: 400px; margin: auto; height: 200px; position: relative;">

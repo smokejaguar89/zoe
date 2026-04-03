@@ -2,12 +2,18 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from fastapi.params import Depends
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.sensor_service import (
-    LIGHT_THRESHOLD, MOISTURE_THRESHOLD, TEMPERATURE_THRESHOLD)
+    LIGHT_THRESHOLD,
+    MOISTURE_THRESHOLD,
+    SensorService,
+    TEMPERATURE_THRESHOLD,
+)
 
 DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-image-preview"
 
@@ -19,7 +25,7 @@ class GeminiServiceError(Exception):
 class GeminiService:
     def __init__(
             self,
-            sensor_service,
+            sensor_service=Depends(SensorService),
             api_key: str | None = None,
             model: str = DEFAULT_GEMINI_MODEL):
         self.sensor_service = sensor_service
@@ -38,7 +44,47 @@ class GeminiService:
             / "gemini"
         )
 
-    async def craft_image_prompt(self) -> str:
+    async def generate_and_save_image(self) -> Path:
+        image_bytes = await self._generate_image()
+        self.generated_image_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"sunflower_{self._current_timestamp_string()}.jpg"
+        output_path = self.generated_image_dir / filename
+        output_path.write_bytes(image_bytes)
+        return output_path
+
+    async def _generate_image(self) -> bytes:
+        if not self.api_key:
+            raise GeminiServiceError("GEMINI_API_KEY is not configured.")
+
+        prompt = await self._craft_image_prompt()
+        client = genai.Client(api_key=self.api_key)
+        try:
+            response = client.models.generate_content(
+                model=self.model,
+                contents=[
+                    prompt,
+                    types.Part.from_bytes(
+                        data=self._read_base_image_bytes(),
+                        mime_type="image/jpeg",
+                    ),
+                ],
+                config=types.GenerateContentConfig(
+                    response_modalities=["IMAGE"],
+                ),
+            )
+        except genai_errors.APIError as error:
+            raise GeminiServiceError(
+                "Gemini API request failed."
+            ) from error
+        image_bytes = self._extract_image_bytes(response)
+        if image_bytes is None:
+            raise GeminiServiceError(
+                "Gemini response did not include an image."
+            )
+
+        return image_bytes
+
+    async def _craft_image_prompt(self) -> str:
         snapshot: SensorSnapshot = await self.sensor_service.get_snapshot()
 
         prompt = [
@@ -72,41 +118,6 @@ class GeminiService:
 
     def _read_base_image_bytes(self) -> bytes:
         return self.base_image_path.read_bytes()
-
-    async def generate_image(self) -> bytes:
-        if not self.api_key:
-            raise GeminiServiceError("GEMINI_API_KEY is not configured.")
-
-        prompt = await self.craft_image_prompt()
-        client = genai.Client(api_key=self.api_key)
-        response = client.models.generate_content(
-            model=self.model,
-            contents=[
-                prompt,
-                types.Part.from_bytes(
-                    data=self._read_base_image_bytes(),
-                    mime_type="image/jpeg",
-                ),
-            ],
-            config=types.GenerateContentConfig(
-                response_modalities=["IMAGE"],
-            ),
-        )
-        image_bytes = self._extract_image_bytes(response)
-        if image_bytes is None:
-            raise GeminiServiceError(
-                "Gemini response did not include an image."
-            )
-
-        return image_bytes
-
-    async def generate_and_save_image(self) -> Path:
-        image_bytes = await self.generate_image()
-        self.generated_image_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"sunflower_{self._current_timestamp_string()}.jpg"
-        output_path = self.generated_image_dir / filename
-        output_path.write_bytes(image_bytes)
-        return output_path
 
     def _current_timestamp_string(self) -> str:
         return datetime.now().strftime("%Y-%m-%d:%H:%M")
