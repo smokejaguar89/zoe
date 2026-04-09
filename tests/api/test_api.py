@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.api import get_last_week_average, get_sensor_data, router
+from app.dependencies import get_analytics_service, get_sensor_service
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.analytics_service import AnalyticsService, CalculationError
 from app.services.sensor_service import SensorService
@@ -47,7 +48,7 @@ def test_sensors_route_returns_expected_payload() -> None:
     )
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[SensorService] = lambda: service
+    app.dependency_overrides[get_sensor_service] = lambda: service
     client = TestClient(app)
 
     # Act
@@ -98,7 +99,7 @@ def test_last_week_average_route_returns_404_when_no_data() -> None:
     )
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[AnalyticsService] = lambda: service
+    app.dependency_overrides[get_analytics_service] = lambda: service
     client = TestClient(app)
 
     # Act

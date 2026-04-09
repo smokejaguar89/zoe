@@ -7,14 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from app.api import api, views
-from app.hardware.bme280_driver import BME280Driver
-from app.hardware.sparkfun_driver import SparkfunDriver
-from app.hardware.tsl2591_driver import TSL2591Driver
-from app.db.database import Database
-from app.scheduler.scheduler import Scheduler
-from app.clients.gemini_client import GeminiClient
-from app.services.image_generation_service import ImageGenerationService
-from app.services.sensor_service import SensorService
+from app.dependencies import get_database, get_scheduler
 
 
 app_logger = logging.getLogger("app")
@@ -40,23 +33,11 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialise SQLite Database
-    database = Database()
+    database = get_database()
     database.init()
 
-    # Initialise hardware and sensor service.
-    bme280 = BME280Driver()
-    tsl2591 = TSL2591Driver()
-    sparkfun = SparkfunDriver()
-    sensor_service = SensorService(bme280, tsl2591, sparkfun)
-    gemini_client = GeminiClient()
-    image_generation_service = ImageGenerationService(
-        sensor_service=sensor_service,
-        image_client=gemini_client,
-        database=database,
-    )
-
     # Initialise scheduler to collect sensor data every minute
-    scheduler = Scheduler(sensor_service, database, image_generation_service)
+    scheduler = get_scheduler()
     scheduler.start()
     yield
     scheduler.stop()

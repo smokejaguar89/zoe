@@ -4,6 +4,11 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from app.dependencies import (
+    get_analytics_service,
+    get_image_generation_service,
+    get_sensor_service,
+)
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.analytics_service import AnalyticsService
 from app.services.image_generation_service import ImageGenerationService
@@ -17,10 +22,13 @@ router = APIRouter()
 @router.get("/", response_class=HTMLResponse)
 async def load_homepage(
         request: Request,
-        sensor_service=Depends(SensorService),
-        analytics_service=Depends(AnalyticsService),
-        image_generation_service=Depends(
-            ImageGenerationService)) -> HTMLResponse:
+        sensor_service: SensorService = Depends(get_sensor_service),
+        analytics_service: AnalyticsService = Depends(
+            get_analytics_service,
+        ),
+        image_generation_service: ImageGenerationService = Depends(
+            get_image_generation_service,
+        )) -> HTMLResponse:
     generated_image_url = None
     generated_image_generated_at = None
     generated_image_snapshot = None
