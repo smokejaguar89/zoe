@@ -112,7 +112,8 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
         "#1: Keep the sunflower healthy and the soil well hydrated. "
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
-        "#4: Make the scene look like it's afternoon."
+        "#4: Make the scene look like it's afternoon. "
+        "Don't include any people."
     )
 
     # Act
@@ -167,7 +168,8 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
         "#1: Make the sunflower wilt and the soil appear dry. "
         "#2: Dim the scene to suggest a dark room. "
         "#3: Add a cool, chilly atmosphere to the image. "
-        "#4: Make the scene look like it's night."
+        "#4: Make the scene look like it's night. "
+        "Don't include any people."
     )
 
     # Act
@@ -226,7 +228,8 @@ def test_generate_and_save_image_includes_easter_egg_prompt_when_enabled(
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
         "#4: Make the scene look like it's afternoon. "
-        "#6: Add a tiny ladybug on a leaf."
+        "#6: Add a tiny ladybug on a leaf. "
+        "Don't include any people."
     )
 
     # Act
@@ -285,7 +288,8 @@ def test_generate_and_save_image_includes_special_event_prompt_when_present(
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
         "#4: Make the scene look like it's afternoon. "
-        "#7: Add soft lanterns in the background."
+        "#7: Add soft lanterns in the background. "
+        "Don't include any people."
     )
 
     # Act
@@ -358,7 +362,8 @@ def test_craft_image_prompt_includes_top_stories(
         "#5: Pick one of these top stories and incorporate it "
         "into the outside landscape: Story A: Breaking: AI advances reshape "
         "tech industry, Story B: Climate summit reaches historic agreement, "
-        "Story C: Markets surge on economic recovery"
+        "Story C: Markets surge on economic recovery "
+        "Don't include any people."
     )
 
     # Act
@@ -401,7 +406,8 @@ def test_craft_image_prompt_handles_empty_stories(
         "#1: Keep the sunflower healthy and the soil well hydrated. "
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
-        "#4: Make the scene look like it's afternoon."
+        "#4: Make the scene look like it's afternoon. "
+        "Don't include any people."
     )
 
     # Act
@@ -446,7 +452,8 @@ def test_craft_image_prompt_handles_perigon_api_error(
         "#1: Keep the sunflower healthy and the soil well hydrated. "
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
-        "#4: Make the scene look like it's afternoon."
+        "#4: Make the scene look like it's afternoon. "
+        "Don't include any people."
     )
 
     # Act
@@ -459,7 +466,7 @@ def test_craft_image_prompt_handles_perigon_api_error(
 
 @patch("app.services.image_generation_service.random.random", return_value=0.9)
 @patch("app.services.image_generation_service.datetime")
-def test_craft_image_prompt_uses_only_first_three_stories(
+def test_craft_image_prompt_uses_only_first_five_stories(
     mock_datetime,
     _mock_random,
 ) -> None:
@@ -500,7 +507,8 @@ def test_craft_image_prompt_uses_only_first_three_stories(
         "#4: Make the scene look like it's afternoon. "
         "#5: Pick one of these top stories and incorporate it "
         "into the outside landscape: Story A: Story 1, Story B: Story 2, "
-        "Story C: Story 3"
+        "Story C: Story 3, Story D: Story 4, Story E: Story 5 "
+        "Don't include any people."
     )
 
     # Act
@@ -508,5 +516,5 @@ def test_craft_image_prompt_uses_only_first_three_stories(
 
     # Assert
     assert prompt == expected_prompt
-    assert "Story 4" not in prompt
-    assert "Story 5" not in prompt
+    assert "Story 4" in prompt
+    assert "Story 5" in prompt

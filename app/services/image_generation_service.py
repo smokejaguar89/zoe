@@ -95,10 +95,10 @@ class ImageGenerationService:
         try:
             top_stories = self.perigon_client.get_top_headlines()
             if top_stories:
-                top_3_stories = top_stories[:3]
+                top_5_stories = top_stories[:5]
                 stories_str = ", ".join(
                     f"Story {chr(65 + i)}: {story}"
-                    for i, story in enumerate(top_3_stories)
+                    for i, story in enumerate(top_5_stories)
                 )
                 msg = "#5: Pick one of these top stories and incorporate it "\
                       f"into the outside landscape: {stories_str}"
@@ -114,6 +114,8 @@ class ImageGenerationService:
         special_event_prompt = self._maybe_get_special_event_prompt().strip()
         if special_event_prompt:
             prompt.append("#7: " + special_event_prompt)
+
+        prompt.append("Don't include any people.")
 
         return " ".join(prompt)
 
