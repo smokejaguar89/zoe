@@ -40,7 +40,7 @@ class Scheduler:
         scheduler.add_job(
             self._run_collect_data_job,
             'interval',
-            minutes=1
+            minutes=15
         )
         scheduler.add_job(
             self._run_generate_image_job,
