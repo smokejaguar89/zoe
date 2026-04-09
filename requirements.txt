@@ -23,3 +23,6 @@ httpx>=0.24.0
 # Optional: Hardware (Uncomment based on your specific sensors)
 # RPi.GPIO      # Standard GPIO library
 # adafruit-blinka # If using CircuitPython libraries
+adafruit-blinka
+adafruit-circuitpython-tsl2591>=1.4.14
+adafruit-circuitpython-bme280

@@ -26,6 +26,7 @@ class SensorService:
         bme280Reading = self.bme280.get_reading()
         tsl2591Reading = self.tsl2591.get_reading()
         sparkfunReading = self.sparkfun.get_reading()
+
         return SensorSnapshot(
             temperature=bme280Reading.ambient_temp_celsius,
             humidity=bme280Reading.relative_humidity_pct,
