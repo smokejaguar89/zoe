@@ -44,7 +44,7 @@ class ImageGenerationService:
             Path(__file__).resolve().parents[1]
             / "static"
             / "img"
-            / "sunflower_window_base.png"
+            / "sunflower_window_base.jpeg"
         )
         self.generated_image_dir = (
             Path(__file__).resolve().parents[1]
