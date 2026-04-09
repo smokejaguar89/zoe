@@ -9,8 +9,25 @@ class ChartConfig {
 }
 
 class ChartFactory {
+    constructor(isNightMode = false) {
+        this.isNightMode = isNightMode;
+    }
+
     createHealthChart(ctx, label, labels, data, threshold, unit) {
         const hasThreshold = Number.isFinite(threshold);
+        const titleColor = this.isNightMode ? '#e5e7eb' : '#666';
+        const tickColor = this.isNightMode ? '#d1d5db' : '#999';
+        const lineColor = this.isNightMode
+            ? 'rgba(147, 197, 253, 0.9)'
+            : 'rgba(54, 162, 235, 0.8)';
+        const tooltipBackground = this.isNightMode
+            ? 'rgba(17, 24, 39, 0.92)'
+            : 'rgba(255, 255, 255, 0.9)';
+        const tooltipTitleColor = this.isNightMode ? '#f3f4f6' : '#333';
+        const tooltipBodyColor = this.isNightMode ? '#e5e7eb' : '#666';
+        const tooltipBorderColor = this.isNightMode
+            ? 'rgba(75, 85, 99, 0.8)'
+            : '#ddd';
 
         // Helper to build the dynamic "Red-Below-Threshold" gradient
         const getGradient = (context) => {
@@ -50,7 +67,7 @@ class ChartFactory {
                     data: data,
                     fill: true,
                     backgroundColor: (context) => getGradient(context),
-                    borderColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: lineColor,
                     borderWidth: 2,
                     tension: 0.4,
                     pointRadius: 0,
@@ -63,7 +80,7 @@ class ChartFactory {
                     title: {
                         display: true,
                         text: label,
-                        color: '#666',
+                        color: titleColor,
                         font: {
                             size: 18,
                             weight: 'bold',
@@ -77,10 +94,10 @@ class ChartFactory {
                     legend: { display: false },
                     tooltip: {
                         enabled: true,
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)', // Clean white glass look
-                        titleColor: '#333',
-                        bodyColor: '#666',
-                        borderColor: '#ddd',
+                        backgroundColor: tooltipBackground,
+                        titleColor: tooltipTitleColor,
+                        bodyColor: tooltipBodyColor,
+                        borderColor: tooltipBorderColor,
                         borderWidth: 1,
                         padding: 12,
                         cornerRadius: 10,
@@ -126,11 +143,11 @@ class ChartFactory {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { maxTicksLimit: 8, color: '#999' }
+                        ticks: { maxTicksLimit: 8, color: tickColor }
                     },
                     y: {
                         grid: { display: false },
-                        ticks: { color: '#999' }
+                        ticks: { color: tickColor }
                     }
                 }
             }

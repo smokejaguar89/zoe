@@ -22,7 +22,16 @@
     <style>
         body {
             font-family: "Playwrite IE", cursive;
+            background: #fff;
+            color: #111;
+            transition: background-color 250ms ease, color 250ms ease;
         }
+
+        body.night-mode {
+            background: #000;
+            color: #f3f4f6;
+        }
+
         .generated-image-section {
             width: 600px;
             margin: 20px auto;
@@ -118,10 +127,16 @@
         const chartThresholds = JSON.parse(
             document.body.dataset.chartThresholds || '{}'
         );
+        const currentHour = new Date().getHours();
+        const isNight = currentHour >= 19 || currentHour < 6;
+
+        if (isNight) {
+            document.body.classList.add('night-mode');
+        }
 
         // Extract labels (hours) and data for each line
         const labels = rawData.map(d => d.time);
-        const chartFactory = new ChartFactory();
+        const chartFactory = new ChartFactory(isNight);
 
         const chartConfigs = [
             new ChartConfig(
