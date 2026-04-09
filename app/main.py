@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 
 # --- 2. App Initialization ---
 app = FastAPI(
-    title="Pi Sensor Hub",
+    title="Zoe",
     lifespan=lifespan
 )
 

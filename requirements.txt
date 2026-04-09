@@ -27,3 +27,4 @@ adafruit-blinka
 adafruit-circuitpython-tsl2591>=1.4.7
 adafruit-circuitpython-bme280
 gpiozero
+lgpio
