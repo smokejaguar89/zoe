@@ -79,7 +79,10 @@
         }
     </style>
 </head>
-<body data-time-series='{{ (time_series or []) | tojson | forceescape }}'>
+<body
+    data-time-series='{{ (time_series or []) | tojson | forceescape }}'
+    data-chart-thresholds='{{ (chart_thresholds or {}) | tojson | forceescape }}'
+>
     {% if generated_image_path %}
     <div class="generated-image-section">
         <h3>How much does your plant hate you?</h3>
@@ -112,17 +115,38 @@
 
     <script>
         const rawData = JSON.parse(document.body.dataset.timeSeries || '[]');
+        const chartThresholds = JSON.parse(
+            document.body.dataset.chartThresholds || '{}'
+        );
 
         // Extract labels (hours) and data for each line
         const labels = rawData.map(d => d.time);
         const chartFactory = new ChartFactory();
 
         const chartConfigs = [
-            new ChartConfig('moisture', 'Soil Moisture', 'moisture', 22, '%'),
-            new ChartConfig('light', 'Light Intensity', 'light', 22, '%'),
-            new ChartConfig('humidity', 'Humidity', 'humidity', 22, '%'),
-            new ChartConfig('pressure', 'Pressure', 'pressure', 22, 'hPa'),
-            new ChartConfig('temperature', 'Temperature', 'temp', 22, '°C')
+            new ChartConfig(
+                'moisture',
+                'Soil Moisture',
+                'moisture',
+                chartThresholds.moisture_min,
+                '%'
+            ),
+            new ChartConfig(
+                'light',
+                'Light Intensity',
+                'light',
+                chartThresholds.light_min_lux,
+                ' lux'
+            ),
+            new ChartConfig('humidity', 'Humidity', 'humidity', null, '%'),
+            new ChartConfig('pressure', 'Pressure', 'pressure', null, 'hPa'),
+            new ChartConfig(
+                'temperature',
+                'Temperature',
+                'temp',
+                chartThresholds.temperature_min_c,
+                '°C'
+            )
         ];
 
         for (const chart of chartConfigs) {

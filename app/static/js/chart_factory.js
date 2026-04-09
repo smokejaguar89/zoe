@@ -10,12 +10,17 @@ class ChartConfig {
 
 class ChartFactory {
     createHealthChart(ctx, label, labels, data, threshold, unit) {
+        const hasThreshold = Number.isFinite(threshold);
+
         // Helper to build the dynamic "Red-Below-Threshold" gradient
         const getGradient = (context) => {
             const chart = context.chart;
             const {ctx, chartArea, scales} = chart;
 
             if (!chartArea || !scales.y) return 'rgba(54, 162, 235, 0.2)';
+            if (!hasThreshold) {
+                return 'rgba(54, 162, 235, 0.25)';
+            }
 
             const thresholdPixel = scales.y.getPixelForValue(threshold);
             
@@ -96,23 +101,26 @@ class ChartFactory {
                     },
                     // The Health Line annotation
                     annotation: {
-                        annotations: {
-                            healthLine: {
-                                type: 'line',
-                                yMin: threshold,
-                                yMax: threshold,
-                                borderColor: 'rgba(255, 99, 132, 0.6)',
-                                borderWidth: 1,
-                                borderDash: [5, 5],
-                                label: {
-                                    display: true,
-                                    content: 'Min Health',
-                                    position: 'end',
-                                    backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                                    font: { size: 10 }
+                        annotations: hasThreshold
+                            ? {
+                                healthLine: {
+                                    type: 'line',
+                                    yMin: threshold,
+                                    yMax: threshold,
+                                    borderColor: 'rgba(255, 99, 132, 0.6)',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5],
+                                    label: {
+                                        display: true,
+                                        content: 'Baseline',
+                                        position: 'end',
+                                        backgroundColor:
+                                            'rgba(255, 99, 132, 0.7)',
+                                        font: { size: 10 }
+                                    }
                                 }
                             }
-                        }
+                            : {}
                     }
                 },
                 scales: {

@@ -1,10 +1,4 @@
 from datetime import datetime, timezone
-
-from fastapi.params import Depends
-
-from app.hardware.bme280_driver import BME280Driver
-from app.hardware.sparkfun_driver import SparkfunDriver
-from app.hardware.tsl2591_driver import TSL2591Driver
 from app.models.domain.sensor_snapshot import SensorSnapshot
 
 MOISTURE_THRESHOLD = 22.5
@@ -21,9 +15,9 @@ TEMPERATURE_COMFORT_C_UPPER_THRESHOLD = 27.0
 class SensorService:
     def __init__(
             self,
-            bme280=Depends(BME280Driver),
-            tsl2591=Depends(TSL2591Driver),
-            sparkfun=Depends(SparkfunDriver)):
+            bme280,
+            tsl2591,
+            sparkfun):
         self.bme280 = bme280
         self.tsl2591 = tsl2591
         self.sparkfun = sparkfun

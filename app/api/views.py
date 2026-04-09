@@ -12,7 +12,12 @@ from app.dependencies import (
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.analytics_service import AnalyticsService
 from app.services.image_generation_service import ImageGenerationService
-from app.services.sensor_service import SensorService
+from app.services.sensor_service import (
+    LIGHT_LOW_LUX_THRESHOLD,
+    MOISTURE_THRESHOLD,
+    SensorService,
+    TEMPERATURE_COOL_C_THRESHOLD,
+)
 
 # 1. Point to the templates directory
 templates = Jinja2Templates(directory="app/templates")
@@ -73,6 +78,11 @@ async def load_homepage(
         context={
             "sensor_data": sensor_snapshot,
             "time_series": time_series,
+            "chart_thresholds": {
+                "moisture_min": MOISTURE_THRESHOLD,
+                "light_min_lux": LIGHT_LOW_LUX_THRESHOLD,
+                "temperature_min_c": TEMPERATURE_COOL_C_THRESHOLD,
+            },
             "generated_image_path": generated_image_url,
             "generated_image_generated_at": generated_image_generated_at,
             "generated_image_snapshot": generated_image_snapshot,

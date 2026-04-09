@@ -6,7 +6,12 @@ from app.models.domain.generated_image import GeneratedImage
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.analytics_service import AnalyticsService
 from app.services.image_generation_service import ImageGenerationService
-from app.services.sensor_service import SensorService
+from app.services.sensor_service import (
+    LIGHT_LOW_LUX_THRESHOLD,
+    MOISTURE_THRESHOLD,
+    SensorService,
+    TEMPERATURE_COOL_C_THRESHOLD,
+)
 
 
 @patch("app.api.views.templates")
@@ -65,6 +70,11 @@ def test_load_homepage_renders_template_with_sensor_data(
         context={
             "sensor_data": sensor_snapshot,
             "time_series": [],
+            "chart_thresholds": {
+                "moisture_min": MOISTURE_THRESHOLD,
+                "light_min_lux": LIGHT_LOW_LUX_THRESHOLD,
+                "temperature_min_c": TEMPERATURE_COOL_C_THRESHOLD,
+            },
             "generated_image_path": (
                 "/static/img/gemini/sunflower_2026-04-03:13:39.jpg"
             ),
@@ -119,6 +129,11 @@ def test_load_homepage_handles_missing_gemini_image(mock_templates) -> None:
         context={
             "sensor_data": sensor_snapshot,
             "time_series": [],
+            "chart_thresholds": {
+                "moisture_min": MOISTURE_THRESHOLD,
+                "light_min_lux": LIGHT_LOW_LUX_THRESHOLD,
+                "temperature_min_c": TEMPERATURE_COOL_C_THRESHOLD,
+            },
             "generated_image_path": None,
             "generated_image_generated_at": None,
             "generated_image_snapshot": None,
