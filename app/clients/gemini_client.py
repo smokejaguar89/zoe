@@ -31,7 +31,7 @@ class GeminiClient:
                     prompt,
                     types.Part.from_bytes(
                         data=base_image_bytes,
-                        mime_type="image/jpeg",
+                        mime_type="image/png",
                     ),
                 ],
                 config=types.GenerateContentConfig(

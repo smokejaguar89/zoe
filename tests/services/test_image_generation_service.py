@@ -103,14 +103,16 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
     service.base_image_path = MagicMock(
         read_bytes=MagicMock(return_value=b"base")
     )
+    service.perigon_client = MagicMock()
+    service.perigon_client.get_top_headlines = MagicMock(return_value=[])
     mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
     expected_prompt = (
         "Use the provided sunflower painting as the base image. "
         "Edit the scene to reflect the plant's environment. "
-        "#1:Keep the sunflower healthy and the soil well hydrated. "
-        "#2:Use soft, natural indoor lighting. "
-        "#3:Keep a neutral, comfortable atmosphere in the image. "
-        "#4:Make the scene look like it's afternoon."
+        "#1: Keep the sunflower healthy and the soil well hydrated. "
+        "#2: Use soft, natural indoor lighting. "
+        "#3: Keep a neutral, comfortable atmosphere in the image. "
+        "#4: Make the scene look like it's afternoon."
     )
 
     # Act
@@ -156,14 +158,16 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
     service.base_image_path = MagicMock(
         read_bytes=MagicMock(return_value=b"base")
     )
+    service.perigon_client = MagicMock()
+    service.perigon_client.get_top_headlines = MagicMock(return_value=[])
     mock_datetime.now.return_value = datetime(2026, 4, 9, 2, 15)
     expected_prompt = (
         "Use the provided sunflower painting as the base image. "
         "Edit the scene to reflect the plant's environment. "
-        "#1:Make the sunflower wilt and the soil appear dry. "
-        "#2:Dim the scene to suggest a dark room. "
-        "#3:Add a cool, chilly atmosphere to the image. "
-        "#4:Make the scene look like it's night."
+        "#1: Make the sunflower wilt and the soil appear dry. "
+        "#2: Dim the scene to suggest a dark room. "
+        "#3: Add a cool, chilly atmosphere to the image. "
+        "#4: Make the scene look like it's night."
     )
 
     # Act
@@ -209,6 +213,8 @@ def test_generate_and_save_image_includes_easter_egg_prompt_when_enabled(
     service.base_image_path = MagicMock(
         read_bytes=MagicMock(return_value=b"base")
     )
+    service.perigon_client = MagicMock()
+    service.perigon_client.get_top_headlines = MagicMock(return_value=[])
     service._get_easter_egg_prompt = MagicMock(
         return_value="Add a tiny ladybug on a leaf."
     )
@@ -216,11 +222,11 @@ def test_generate_and_save_image_includes_easter_egg_prompt_when_enabled(
     expected_prompt = (
         "Use the provided sunflower painting as the base image. "
         "Edit the scene to reflect the plant's environment. "
-        "#1:Keep the sunflower healthy and the soil well hydrated. "
-        "#2:Use soft, natural indoor lighting. "
-        "#3:Keep a neutral, comfortable atmosphere in the image. "
-        "#4:Make the scene look like it's afternoon. "
-        "#5:Add a tiny ladybug on a leaf."
+        "#1: Keep the sunflower healthy and the soil well hydrated. "
+        "#2: Use soft, natural indoor lighting. "
+        "#3: Keep a neutral, comfortable atmosphere in the image. "
+        "#4: Make the scene look like it's afternoon. "
+        "#6: Add a tiny ladybug on a leaf."
     )
 
     # Act
@@ -266,6 +272,8 @@ def test_generate_and_save_image_includes_special_event_prompt_when_present(
     service.base_image_path = MagicMock(
         read_bytes=MagicMock(return_value=b"base")
     )
+    service.perigon_client = MagicMock()
+    service.perigon_client.get_top_headlines = MagicMock(return_value=[])
     service._maybe_get_special_event_prompt = MagicMock(
         return_value="Add soft lanterns in the background."
     )
@@ -273,11 +281,11 @@ def test_generate_and_save_image_includes_special_event_prompt_when_present(
     expected_prompt = (
         "Use the provided sunflower painting as the base image. "
         "Edit the scene to reflect the plant's environment. "
-        "#1:Keep the sunflower healthy and the soil well hydrated. "
-        "#2:Use soft, natural indoor lighting. "
-        "#3:Keep a neutral, comfortable atmosphere in the image. "
-        "#4:Make the scene look like it's afternoon. "
-        "#6:Add soft lanterns in the background."
+        "#1: Keep the sunflower healthy and the soil well hydrated. "
+        "#2: Use soft, natural indoor lighting. "
+        "#3: Keep a neutral, comfortable atmosphere in the image. "
+        "#4: Make the scene look like it's afternoon. "
+        "#7: Add soft lanterns in the background."
     )
 
     # Act
@@ -306,3 +314,199 @@ def test_get_latest_generated_image_returns_none_when_database_empty() -> None:
     # Assert
     assert generated_image is None
     database.get_latest_generated_image.assert_awaited_once_with()
+
+
+@patch("app.services.image_generation_service.random.random", return_value=0.9)
+@patch("app.services.image_generation_service.datetime")
+def test_craft_image_prompt_includes_top_stories(
+    mock_datetime,
+    _mock_random,
+) -> None:
+    # Arrange
+    snapshot = SensorSnapshot(
+        temperature=26.0,
+        humidity=45.0,
+        light=50.0,
+        moisture=0.7,
+        pressure=1008.0,
+    )
+    sensor_service = MagicMock()
+    image_client = MagicMock()
+    database = MagicMock()
+    perigon_client = MagicMock()
+    perigon_client.get_top_headlines = MagicMock(
+        return_value=[
+            "Breaking: AI advances reshape tech industry",
+            "Climate summit reaches historic agreement",
+            "Markets surge on economic recovery",
+        ]
+    )
+    service = ImageGenerationService(
+        sensor_service=sensor_service,
+        image_client=image_client,
+        database=database,
+        perigon_client=perigon_client,
+    )
+    mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
+    expected_prompt = (
+        "Use the provided sunflower painting as the base image. "
+        "Edit the scene to reflect the plant's environment. "
+        "#1: Keep the sunflower healthy and the soil well hydrated. "
+        "#2: Use soft, natural indoor lighting. "
+        "#3: Keep a neutral, comfortable atmosphere in the image. "
+        "#4: Make the scene look like it's afternoon. "
+        "#5: Pick one of these top stories and incorporate it "
+        "into the outside landscape: Story A: Breaking: AI advances reshape "
+        "tech industry, Story B: Climate summit reaches historic agreement, "
+        "Story C: Markets surge on economic recovery"
+    )
+
+    # Act
+    prompt = service._craft_image_prompt(snapshot)
+
+    # Assert
+    assert prompt == expected_prompt
+    perigon_client.get_top_headlines.assert_called_once()
+
+
+@patch("app.services.image_generation_service.random.random", return_value=0.9)
+@patch("app.services.image_generation_service.datetime")
+def test_craft_image_prompt_handles_empty_stories(
+    mock_datetime,
+    _mock_random,
+) -> None:
+    # Arrange
+    snapshot = SensorSnapshot(
+        temperature=26.0,
+        humidity=45.0,
+        light=50.0,
+        moisture=0.7,
+        pressure=1008.0,
+    )
+    sensor_service = MagicMock()
+    image_client = MagicMock()
+    database = MagicMock()
+    perigon_client = MagicMock()
+    perigon_client.get_top_headlines = MagicMock(return_value=[])
+    service = ImageGenerationService(
+        sensor_service=sensor_service,
+        image_client=image_client,
+        database=database,
+        perigon_client=perigon_client,
+    )
+    mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
+    expected_prompt = (
+        "Use the provided sunflower painting as the base image. "
+        "Edit the scene to reflect the plant's environment. "
+        "#1: Keep the sunflower healthy and the soil well hydrated. "
+        "#2: Use soft, natural indoor lighting. "
+        "#3: Keep a neutral, comfortable atmosphere in the image. "
+        "#4: Make the scene look like it's afternoon."
+    )
+
+    # Act
+    prompt = service._craft_image_prompt(snapshot)
+
+    # Assert
+    assert prompt == expected_prompt
+    perigon_client.get_top_headlines.assert_called_once()
+
+
+@patch("app.services.image_generation_service.random.random", return_value=0.9)
+@patch("app.services.image_generation_service.datetime")
+def test_craft_image_prompt_handles_perigon_api_error(
+    mock_datetime,
+    _mock_random,
+) -> None:
+    # Arrange
+    snapshot = SensorSnapshot(
+        temperature=26.0,
+        humidity=45.0,
+        light=50.0,
+        moisture=0.7,
+        pressure=1008.0,
+    )
+    sensor_service = MagicMock()
+    image_client = MagicMock()
+    database = MagicMock()
+    perigon_client = MagicMock()
+    perigon_client.get_top_headlines = MagicMock(
+        side_effect=Exception("API error")
+    )
+    service = ImageGenerationService(
+        sensor_service=sensor_service,
+        image_client=image_client,
+        database=database,
+        perigon_client=perigon_client,
+    )
+    mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
+    expected_prompt = (
+        "Use the provided sunflower painting as the base image. "
+        "Edit the scene to reflect the plant's environment. "
+        "#1: Keep the sunflower healthy and the soil well hydrated. "
+        "#2: Use soft, natural indoor lighting. "
+        "#3: Keep a neutral, comfortable atmosphere in the image. "
+        "#4: Make the scene look like it's afternoon."
+    )
+
+    # Act
+    prompt = service._craft_image_prompt(snapshot)
+
+    # Assert
+    assert prompt == expected_prompt
+    perigon_client.get_top_headlines.assert_called_once()
+
+
+@patch("app.services.image_generation_service.random.random", return_value=0.9)
+@patch("app.services.image_generation_service.datetime")
+def test_craft_image_prompt_uses_only_first_three_stories(
+    mock_datetime,
+    _mock_random,
+) -> None:
+    # Arrange
+    snapshot = SensorSnapshot(
+        temperature=26.0,
+        humidity=45.0,
+        light=50.0,
+        moisture=0.7,
+        pressure=1008.0,
+    )
+    sensor_service = MagicMock()
+    image_client = MagicMock()
+    database = MagicMock()
+    perigon_client = MagicMock()
+    perigon_client.get_top_headlines = MagicMock(
+        return_value=[
+            "Story 1",
+            "Story 2",
+            "Story 3",
+            "Story 4",
+            "Story 5",
+        ]
+    )
+    service = ImageGenerationService(
+        sensor_service=sensor_service,
+        image_client=image_client,
+        database=database,
+        perigon_client=perigon_client,
+    )
+    mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
+    expected_prompt = (
+        "Use the provided sunflower painting as the base image. "
+        "Edit the scene to reflect the plant's environment. "
+        "#1: Keep the sunflower healthy and the soil well hydrated. "
+        "#2: Use soft, natural indoor lighting. "
+        "#3: Keep a neutral, comfortable atmosphere in the image. "
+        "#4: Make the scene look like it's afternoon. "
+        "#5: Pick one of these top stories and incorporate it "
+        "into the outside landscape: Story A: Story 1, Story B: Story 2, "
+        "Story C: Story 3"
+    )
+
+    # Act
+    prompt = service._craft_image_prompt(snapshot)
+
+    # Assert
+    assert prompt == expected_prompt
+    assert "Story 4" not in prompt
+    assert "Story 5" not in prompt

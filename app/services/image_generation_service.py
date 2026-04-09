@@ -8,6 +8,7 @@ from fastapi.params import Depends
 
 from app.db.database import Database
 from app.clients.gemini_client import GeminiClient
+from app.clients.perigon_client import PerigonClient
 from app.models.domain.generated_image import GeneratedImage
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.sensor_service import (
@@ -33,15 +34,17 @@ class ImageGenerationService:
             self,
             sensor_service: SensorService = Depends(SensorService),
             image_client: ImageClient = Depends(GeminiClient),
-            database: Database = Depends(Database)):
+            database: Database = Depends(Database),
+            perigon_client: PerigonClient = Depends(PerigonClient)):
         self.sensor_service = sensor_service
         self.image_client = image_client
         self.database = database
+        self.perigon_client = perigon_client
         self.base_image_path = (
             Path(__file__).resolve().parents[1]
             / "static"
             / "img"
-            / "sunflower_base.jpg"
+            / "sunflower_window_base.png"
         )
         self.generated_image_dir = (
             Path(__file__).resolve().parents[1]
@@ -83,19 +86,34 @@ class ImageGenerationService:
             )
         ]
 
-        prompt.append("#1:" + self._build_moisture_prompt(snapshot))
-        prompt.append("#2:" + self._build_light_prompt(snapshot))
-        prompt.append("#3:" + self._build_temperature_prompt(snapshot))
-        prompt.append("#4:" + self._build_time_of_day_prompt(datetime.now()))
+        prompt.append("#1: " + self._build_moisture_prompt(snapshot))
+        prompt.append("#2: " + self._build_light_prompt(snapshot))
+        prompt.append("#3: " + self._build_temperature_prompt(snapshot))
+        prompt.append("#4: " + self._build_time_of_day_prompt(datetime.now()))
+
+        # Add top stories from news
+        try:
+            top_stories = self.perigon_client.get_top_headlines()
+            if top_stories:
+                top_3_stories = top_stories[:3]
+                stories_str = ", ".join(
+                    f"Story {chr(65 + i)}: {story}"
+                    for i, story in enumerate(top_3_stories)
+                )
+                msg = "#5: Pick one of these top stories and incorporate it "\
+                      f"into the outside landscape: {stories_str}"
+                prompt.append(msg)
+        except Exception as e:
+            logger.info(f"Could not fetch top stories: {e}")
 
         if self._should_include_easter_egg():
             easter_egg_prompt = self._get_easter_egg_prompt().strip()
             if easter_egg_prompt:
-                prompt.append("#5:" + easter_egg_prompt)
+                prompt.append("#6: " + easter_egg_prompt)
 
         special_event_prompt = self._maybe_get_special_event_prompt().strip()
         if special_event_prompt:
-            prompt.append("#6:" + special_event_prompt)
+            prompt.append("#7: " + special_event_prompt)
 
         return " ".join(prompt)
 
