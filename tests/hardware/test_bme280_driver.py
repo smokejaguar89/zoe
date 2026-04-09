@@ -10,16 +10,18 @@ def test_get_reading_returns_bme280_reading(
     mock_i2c,
     mock_bme280_ctor,
 ) -> None:
+    # Arrange
     mock_sensor = MagicMock()
     mock_sensor.temperature = 21.1
     mock_sensor.relative_humidity = 45.2
     mock_sensor.pressure = 1001.3
     mock_bme280_ctor.return_value = mock_sensor
-
     sensor = BME280Driver()
 
+    # Act
     reading = sensor.get_reading()
 
+    # Assert
     assert isinstance(reading, BME280Reading)
     assert reading.ambient_temp_celsius == 21.1
     assert reading.relative_humidity_pct == 45.2

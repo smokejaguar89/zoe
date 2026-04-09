@@ -11,6 +11,7 @@ from app.services.sensor_service import SensorService
 
 
 def test_get_sensor_data_returns_valid_response_model() -> None:
+    # Arrange
     service = MagicMock(spec=SensorService)
     service.get_snapshot = AsyncMock(
         return_value=SensorSnapshot(
@@ -22,8 +23,10 @@ def test_get_sensor_data_returns_valid_response_model() -> None:
         )
     )
 
+    # Act
     response = asyncio.run(get_sensor_data(sensor_service=service))
 
+    # Assert
     assert response.temperature == 24.2
     assert response.humidity == 46.5
     assert response.light == 320.0
@@ -31,6 +34,7 @@ def test_get_sensor_data_returns_valid_response_model() -> None:
 
 
 def test_sensors_route_returns_expected_payload() -> None:
+    # Arrange
     service = MagicMock(spec=SensorService)
     service.get_snapshot = AsyncMock(
         return_value=SensorSnapshot(
@@ -46,8 +50,10 @@ def test_sensors_route_returns_expected_payload() -> None:
     app.dependency_overrides[SensorService] = lambda: service
     client = TestClient(app)
 
+    # Act
     response = client.get("/api/sensors")
 
+    # Assert
     assert response.status_code == 200
     assert response.json() == {
         "temperature": 24.2,
@@ -59,6 +65,7 @@ def test_sensors_route_returns_expected_payload() -> None:
 
 
 def test_get_last_week_average_returns_valid_response_model() -> None:
+    # Arrange
     service = MagicMock(spec=AnalyticsService)
     service.get_last_week_average = AsyncMock(
         return_value=SensorSnapshot(
@@ -70,8 +77,10 @@ def test_get_last_week_average_returns_valid_response_model() -> None:
         )
     )
 
+    # Act
     response = asyncio.run(get_last_week_average(analytics_service=service))
 
+    # Assert
     assert response.temperature == 23.5
     assert response.humidity == 44.5
     assert response.light == 300.0
@@ -80,6 +89,7 @@ def test_get_last_week_average_returns_valid_response_model() -> None:
 
 
 def test_last_week_average_route_returns_404_when_no_data() -> None:
+    # Arrange
     service = MagicMock(spec=AnalyticsService)
     service.get_last_week_average = AsyncMock(
         side_effect=CalculationError(
@@ -91,8 +101,10 @@ def test_last_week_average_route_returns_404_when_no_data() -> None:
     app.dependency_overrides[AnalyticsService] = lambda: service
     client = TestClient(app)
 
+    # Act
     response = client.get("/api/sensors/last_week_average")
 
+    # Assert
     assert response.status_code == 404
     assert response.json() == {
         "detail": "No sensor readings found for the past week."

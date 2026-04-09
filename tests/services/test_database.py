@@ -9,15 +9,19 @@ from app.models.db.generated_image_entity import GeneratedImageEntity
 
 @patch("app.db.database.SQLModel.metadata.create_all")
 def test_init_creates_database_tables(create_all) -> None:
+    # Arrange
     db = Database()
 
+    # Act
     db.init()
 
+    # Assert
     create_all.assert_called_once_with(db.engine)
 
 
 @patch("app.db.database.Session")
 def test_save_sensor_data_adds_and_commits_reading(session_cls) -> None:
+    # Arrange
     db = Database()
     snapshot = SensorSnapshot(
         temperature=24.2,
@@ -29,8 +33,10 @@ def test_save_sensor_data_adds_and_commits_reading(session_cls) -> None:
     session = MagicMock()
     session_cls.return_value.__enter__.return_value = session
 
+    # Act
     asyncio.run(db.save_snapshot(snapshot))
 
+    # Assert
     session_cls.assert_called_once_with(db.engine)
     session.add.assert_called_once()
     session.commit.assert_called_once()
@@ -38,6 +44,7 @@ def test_save_sensor_data_adds_and_commits_reading(session_cls) -> None:
 
 @patch("app.db.database.Session")
 def test_save_generated_image_adds_and_commits_record(session_cls) -> None:
+    # Arrange
     db = Database()
     snapshot = SensorSnapshot(
         temperature=24.2,
@@ -49,6 +56,7 @@ def test_save_generated_image_adds_and_commits_record(session_cls) -> None:
     session = MagicMock()
     session_cls.return_value.__enter__.return_value = session
 
+    # Act
     asyncio.run(
         db.save_generated_image(
             filename="sunflower_2026-04-03:13:39.jpg",
@@ -57,6 +65,7 @@ def test_save_generated_image_adds_and_commits_record(session_cls) -> None:
         )
     )
 
+    # Assert
     session_cls.assert_called_once_with(db.engine)
     session.add.assert_called_once()
     session.commit.assert_called_once()
@@ -64,6 +73,7 @@ def test_save_generated_image_adds_and_commits_record(session_cls) -> None:
 
 @patch("app.db.database.Session")
 def test_get_latest_generated_image_returns_record(session_cls) -> None:
+    # Arrange
     db = Database()
     entity = GeneratedImageEntity(
         filename="sunflower_2026-04-03:13:39.jpg",
@@ -79,8 +89,10 @@ def test_get_latest_generated_image_returns_record(session_cls) -> None:
     session.exec.return_value.first.return_value = entity
     session_cls.return_value.__enter__.return_value = session
 
+    # Act
     generated_image = asyncio.run(db.get_latest_generated_image())
 
+    # Assert
     assert generated_image is not None
     assert generated_image.filename == "sunflower_2026-04-03:13:39.jpg"
     assert generated_image.sensor_snapshot is not None

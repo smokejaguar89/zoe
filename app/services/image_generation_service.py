@@ -87,8 +87,13 @@ class ImageGenerationService:
         prompt.append("#4:" + self._build_time_of_day_prompt(datetime.now()))
 
         if self._should_include_easter_egg():
-            prompt.append("#5:" + self._get_easter_egg_prompt())
-        prompt.append("#6:" + self._maybe_get_special_event_prompt())
+            easter_egg_prompt = self._get_easter_egg_prompt().strip()
+            if easter_egg_prompt:
+                prompt.append("#5:" + easter_egg_prompt)
+
+        special_event_prompt = self._maybe_get_special_event_prompt().strip()
+        if special_event_prompt:
+            prompt.append("#6:" + special_event_prompt)
 
         return " ".join(prompt)
 

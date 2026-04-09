@@ -8,6 +8,7 @@ from app.services.sensor_service import SensorService
 
 
 def test_get_sensor_data_maps_sensor_readings() -> None:
+    # Arrange
     bme280 = MagicMock()
     bme280.get_reading.return_value = BME280Reading(
         ambient_temp_celsius=23.0,
@@ -20,8 +21,10 @@ def test_get_sensor_data_maps_sensor_readings() -> None:
     sparkfun.get_reading.return_value = SparkfunReading(soil_hydration=17.6)
     service = SensorService(bme280=bme280, tsl2591=tsl2591, sparkfun=sparkfun)
 
+    # Act
     sensor_data = asyncio.run(service.get_snapshot())
 
+    # Assert
     assert sensor_data.temperature == 23.0
     assert sensor_data.humidity == 41.5
     assert sensor_data.pressure == 1002.4

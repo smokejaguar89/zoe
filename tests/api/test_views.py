@@ -13,6 +13,7 @@ from app.services.sensor_service import SensorService
 def test_load_homepage_renders_template_with_sensor_data(
     mock_templates,
 ) -> None:
+    # Arrange
     request = MagicMock()
     sensor_snapshot = SensorSnapshot(
         temperature=23.4,
@@ -42,6 +43,7 @@ def test_load_homepage_renders_template_with_sensor_data(
     )
     mock_templates.TemplateResponse.return_value = "rendered-page"
 
+    # Act
     response = asyncio.run(
         load_homepage(
             request=request,
@@ -51,11 +53,12 @@ def test_load_homepage_renders_template_with_sensor_data(
         )
     )
 
+    # Assert
     assert response == "rendered-page"
-    (
+    get_latest_generated_image = (
         image_generation_service.get_latest_generated_image
-        .assert_awaited_once_with()
     )
+    get_latest_generated_image.assert_awaited_once_with()
     mock_templates.TemplateResponse.assert_called_once_with(
         request=request,
         name="homepage.html",
@@ -75,6 +78,7 @@ def test_load_homepage_renders_template_with_sensor_data(
 
 @patch("app.api.views.templates")
 def test_load_homepage_handles_missing_gemini_image(mock_templates) -> None:
+    # Arrange
     request = MagicMock()
     sensor_snapshot = SensorSnapshot(
         temperature=23.4,
@@ -93,6 +97,7 @@ def test_load_homepage_handles_missing_gemini_image(mock_templates) -> None:
     )
     mock_templates.TemplateResponse.return_value = "rendered-page"
 
+    # Act
     response = asyncio.run(
         load_homepage(
             request=request,
@@ -102,11 +107,12 @@ def test_load_homepage_handles_missing_gemini_image(mock_templates) -> None:
         )
     )
 
+    # Assert
     assert response == "rendered-page"
-    (
+    get_latest_generated_image = (
         image_generation_service.get_latest_generated_image
-        .assert_awaited_once_with()
     )
+    get_latest_generated_image.assert_awaited_once_with()
     mock_templates.TemplateResponse.assert_called_once_with(
         request=request,
         name="homepage.html",
