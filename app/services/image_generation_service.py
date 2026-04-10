@@ -8,7 +8,7 @@ from fastapi.params import Depends
 
 from app.db.database import Database
 from app.clients.gemini_client import GeminiClient
-from app.clients.perigon_client import PerigonClient
+from app.clients.news_api_client import NewsApiClient, NewsCategory
 from app.models.domain.generated_image import GeneratedImage
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.sensor_service import (
@@ -35,11 +35,11 @@ class ImageGenerationService:
             sensor_service: SensorService = Depends(SensorService),
             image_client: ImageClient = Depends(GeminiClient),
             database: Database = Depends(Database),
-            perigon_client: PerigonClient = Depends(PerigonClient)):
+            news_api_client: NewsApiClient = Depends(NewsApiClient)):
         self.sensor_service = sensor_service
         self.image_client = image_client
         self.database = database
-        self.perigon_client = perigon_client
+        self.news_api_client = news_api_client
         self.base_image_path = (
             Path(__file__).resolve().parents[1]
             / "static"
@@ -92,17 +92,15 @@ class ImageGenerationService:
         prompt.append("#4: " + self._build_time_of_day_prompt(datetime.now()))
 
         # Add top stories from news
+        category = random.choice([NewsCategory.SCIENCE, NewsCategory.GENERAL])
         try:
-            top_stories = self.perigon_client.get_top_headlines()
+            top_stories = self.news_api_client.get_top_headlines(
+                category=category)
             if top_stories:
-                top_5_stories = top_stories[:5]
-                stories_str = ", ".join(
-                    f"Story {chr(65 + i)}: {story}"
-                    for i, story in enumerate(top_5_stories)
-                )
-                msg = "#5: Pick one of these top stories and incorporate it "\
-                      f"into the outside landscape: {stories_str}"
-                prompt.append(msg)
+                top_story = top_stories[0]
+                prompt.append(
+                    "#5: Update the background landscape to incorporate "
+                    f"this story: {top_story}.")
         except Exception as e:
             logger.info(f"Could not fetch top stories: {e}")
 
@@ -115,7 +113,7 @@ class ImageGenerationService:
         if special_event_prompt:
             prompt.append("#7: " + special_event_prompt)
 
-        prompt.append("Don't include any people.")
+        prompt.append("Finally: Don't include any people in the image.")
 
         return " ".join(prompt)
 

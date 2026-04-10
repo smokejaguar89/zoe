@@ -103,8 +103,8 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
     service.base_image_path = MagicMock(
         read_bytes=MagicMock(return_value=b"base")
     )
-    service.perigon_client = MagicMock()
-    service.perigon_client.get_top_headlines = MagicMock(return_value=[])
+    service.news_api_client = MagicMock()
+    service.news_api_client.get_top_headlines = MagicMock(return_value=[])
     mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
     expected_prompt = (
         "Use the provided sunflower painting as the base image. "
@@ -113,7 +113,7 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
         "#4: Make the scene look like it's afternoon. "
-        "Don't include any people."
+        "Finally: Don't include any people in the image."
     )
 
     # Act
@@ -159,8 +159,8 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
     service.base_image_path = MagicMock(
         read_bytes=MagicMock(return_value=b"base")
     )
-    service.perigon_client = MagicMock()
-    service.perigon_client.get_top_headlines = MagicMock(return_value=[])
+    service.news_api_client = MagicMock()
+    service.news_api_client.get_top_headlines = MagicMock(return_value=[])
     mock_datetime.now.return_value = datetime(2026, 4, 9, 2, 15)
     expected_prompt = (
         "Use the provided sunflower painting as the base image. "
@@ -169,7 +169,7 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
         "#2: Dim the scene to suggest a dark room. "
         "#3: Add a cool, chilly atmosphere to the image. "
         "#4: Make the scene look like it's night. "
-        "Don't include any people."
+        "Finally: Don't include any people in the image."
     )
 
     # Act
@@ -215,8 +215,8 @@ def test_generate_and_save_image_includes_easter_egg_prompt_when_enabled(
     service.base_image_path = MagicMock(
         read_bytes=MagicMock(return_value=b"base")
     )
-    service.perigon_client = MagicMock()
-    service.perigon_client.get_top_headlines = MagicMock(return_value=[])
+    service.news_api_client = MagicMock()
+    service.news_api_client.get_top_headlines = MagicMock(return_value=[])
     service._get_easter_egg_prompt = MagicMock(
         return_value="Add a tiny ladybug on a leaf."
     )
@@ -229,7 +229,7 @@ def test_generate_and_save_image_includes_easter_egg_prompt_when_enabled(
         "#3: Keep a neutral, comfortable atmosphere in the image. "
         "#4: Make the scene look like it's afternoon. "
         "#6: Add a tiny ladybug on a leaf. "
-        "Don't include any people."
+        "Finally: Don't include any people in the image."
     )
 
     # Act
@@ -275,8 +275,8 @@ def test_generate_and_save_image_includes_special_event_prompt_when_present(
     service.base_image_path = MagicMock(
         read_bytes=MagicMock(return_value=b"base")
     )
-    service.perigon_client = MagicMock()
-    service.perigon_client.get_top_headlines = MagicMock(return_value=[])
+    service.news_api_client = MagicMock()
+    service.news_api_client.get_top_headlines = MagicMock(return_value=[])
     service._maybe_get_special_event_prompt = MagicMock(
         return_value="Add soft lanterns in the background."
     )
@@ -289,7 +289,7 @@ def test_generate_and_save_image_includes_special_event_prompt_when_present(
         "#3: Keep a neutral, comfortable atmosphere in the image. "
         "#4: Make the scene look like it's afternoon. "
         "#7: Add soft lanterns in the background. "
-        "Don't include any people."
+        "Finally: Don't include any people in the image."
     )
 
     # Act
@@ -337,8 +337,8 @@ def test_craft_image_prompt_includes_top_stories(
     sensor_service = MagicMock()
     image_client = MagicMock()
     database = MagicMock()
-    perigon_client = MagicMock()
-    perigon_client.get_top_headlines = MagicMock(
+    news_api_client = MagicMock()
+    news_api_client.get_top_headlines = MagicMock(
         return_value=[
             "Breaking: AI advances reshape tech industry",
             "Climate summit reaches historic agreement",
@@ -349,7 +349,7 @@ def test_craft_image_prompt_includes_top_stories(
         sensor_service=sensor_service,
         image_client=image_client,
         database=database,
-        perigon_client=perigon_client,
+        news_api_client=news_api_client,
     )
     mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
     expected_prompt = (
@@ -359,11 +359,9 @@ def test_craft_image_prompt_includes_top_stories(
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
         "#4: Make the scene look like it's afternoon. "
-        "#5: Pick one of these top stories and incorporate it "
-        "into the outside landscape: Story A: Breaking: AI advances reshape "
-        "tech industry, Story B: Climate summit reaches historic agreement, "
-        "Story C: Markets surge on economic recovery "
-        "Don't include any people."
+        "#5: Update the background landscape to incorporate "
+        "this story: Breaking: AI advances reshape tech industry. "
+        "Finally: Don't include any people in the image."
     )
 
     # Act
@@ -371,7 +369,7 @@ def test_craft_image_prompt_includes_top_stories(
 
     # Assert
     assert prompt == expected_prompt
-    perigon_client.get_top_headlines.assert_called_once()
+    news_api_client.get_top_headlines.assert_called_once()
 
 
 @patch("app.services.image_generation_service.random.random", return_value=0.9)
@@ -391,13 +389,13 @@ def test_craft_image_prompt_handles_empty_stories(
     sensor_service = MagicMock()
     image_client = MagicMock()
     database = MagicMock()
-    perigon_client = MagicMock()
-    perigon_client.get_top_headlines = MagicMock(return_value=[])
+    news_api_client = MagicMock()
+    news_api_client.get_top_headlines = MagicMock(return_value=[])
     service = ImageGenerationService(
         sensor_service=sensor_service,
         image_client=image_client,
         database=database,
-        perigon_client=perigon_client,
+        news_api_client=news_api_client,
     )
     mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
     expected_prompt = (
@@ -407,7 +405,7 @@ def test_craft_image_prompt_handles_empty_stories(
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
         "#4: Make the scene look like it's afternoon. "
-        "Don't include any people."
+        "Finally: Don't include any people in the image."
     )
 
     # Act
@@ -415,12 +413,12 @@ def test_craft_image_prompt_handles_empty_stories(
 
     # Assert
     assert prompt == expected_prompt
-    perigon_client.get_top_headlines.assert_called_once()
+    news_api_client.get_top_headlines.assert_called_once()
 
 
 @patch("app.services.image_generation_service.random.random", return_value=0.9)
 @patch("app.services.image_generation_service.datetime")
-def test_craft_image_prompt_handles_perigon_api_error(
+def test_craft_image_prompt_handles_news_api_error(
     mock_datetime,
     _mock_random,
 ) -> None:
@@ -435,15 +433,15 @@ def test_craft_image_prompt_handles_perigon_api_error(
     sensor_service = MagicMock()
     image_client = MagicMock()
     database = MagicMock()
-    perigon_client = MagicMock()
-    perigon_client.get_top_headlines = MagicMock(
+    news_api_client = MagicMock()
+    news_api_client.get_top_headlines = MagicMock(
         side_effect=Exception("API error")
     )
     service = ImageGenerationService(
         sensor_service=sensor_service,
         image_client=image_client,
         database=database,
-        perigon_client=perigon_client,
+        news_api_client=news_api_client,
     )
     mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
     expected_prompt = (
@@ -453,7 +451,7 @@ def test_craft_image_prompt_handles_perigon_api_error(
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
         "#4: Make the scene look like it's afternoon. "
-        "Don't include any people."
+        "Finally: Don't include any people in the image."
     )
 
     # Act
@@ -461,12 +459,12 @@ def test_craft_image_prompt_handles_perigon_api_error(
 
     # Assert
     assert prompt == expected_prompt
-    perigon_client.get_top_headlines.assert_called_once()
+    news_api_client.get_top_headlines.assert_called_once()
 
 
 @patch("app.services.image_generation_service.random.random", return_value=0.9)
 @patch("app.services.image_generation_service.datetime")
-def test_craft_image_prompt_uses_only_first_five_stories(
+def test_craft_image_prompt_uses_only_first_story(
     mock_datetime,
     _mock_random,
 ) -> None:
@@ -481,8 +479,8 @@ def test_craft_image_prompt_uses_only_first_five_stories(
     sensor_service = MagicMock()
     image_client = MagicMock()
     database = MagicMock()
-    perigon_client = MagicMock()
-    perigon_client.get_top_headlines = MagicMock(
+    news_api_client = MagicMock()
+    news_api_client.get_top_headlines = MagicMock(
         return_value=[
             "Story 1",
             "Story 2",
@@ -495,7 +493,7 @@ def test_craft_image_prompt_uses_only_first_five_stories(
         sensor_service=sensor_service,
         image_client=image_client,
         database=database,
-        perigon_client=perigon_client,
+        news_api_client=news_api_client,
     )
     mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
     expected_prompt = (
@@ -505,10 +503,9 @@ def test_craft_image_prompt_uses_only_first_five_stories(
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
         "#4: Make the scene look like it's afternoon. "
-        "#5: Pick one of these top stories and incorporate it "
-        "into the outside landscape: Story A: Story 1, Story B: Story 2, "
-        "Story C: Story 3, Story D: Story 4, Story E: Story 5 "
-        "Don't include any people."
+        "#5: Update the background landscape to incorporate "
+        "this story: Story 1. "
+        "Finally: Don't include any people in the image."
     )
 
     # Act
@@ -516,5 +513,7 @@ def test_craft_image_prompt_uses_only_first_five_stories(
 
     # Assert
     assert prompt == expected_prompt
-    assert "Story 4" in prompt
-    assert "Story 5" in prompt
+    assert "Story 2" not in prompt
+    assert "Story 3" not in prompt
+    assert "Story 4" not in prompt
+    assert "Story 5" not in prompt

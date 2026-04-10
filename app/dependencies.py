@@ -2,7 +2,7 @@ import os
 from functools import lru_cache
 
 from app.clients.gemini_client import GeminiClient
-from app.clients.perigon_client import PerigonClient
+from app.clients.news_api_client import NewsApiClient
 from app.db.database import Database
 from app.hardware.fake_drivers import (
     FakeBME280Driver,
@@ -71,8 +71,8 @@ def get_gemini_client() -> GeminiClient:
     return GeminiClient()
 
 
-def get_perigon_client() -> PerigonClient:
-    return PerigonClient(api_key=os.getenv("PERIGON_API_KEY"))
+def get_news_api_client() -> NewsApiClient:
+    return NewsApiClient(api_key=os.getenv("NEWS_API_KEY"))
 
 
 def get_image_generation_service() -> ImageGenerationService:
@@ -80,7 +80,7 @@ def get_image_generation_service() -> ImageGenerationService:
         sensor_service=get_sensor_service(),
         image_client=get_gemini_client(),
         database=get_database(),
-        perigon_client=get_perigon_client(),
+        news_api_client=get_news_api_client(),
     )
 
 
