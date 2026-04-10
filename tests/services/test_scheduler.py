@@ -51,8 +51,9 @@ def test_start_adds_job_and_starts_scheduler(
     assert first_kwargs["minutes"] == 15
     second_args, second_kwargs = add_job.call_args_list[1]
     assert second_args[0] == scheduler_service._run_generate_image_job
-    assert second_args[1] == "interval"
-    assert second_kwargs["hours"] == 6
+    assert second_args[1] == "cron"
+    assert second_kwargs["hour"] == "5,12,17,22"
+    assert second_kwargs["minute"] == 0
     start.assert_called_once()
 
 

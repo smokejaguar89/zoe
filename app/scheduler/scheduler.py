@@ -44,8 +44,9 @@ class Scheduler:
         )
         scheduler.add_job(
             self._run_generate_image_job,
-            'interval',
-            hours=6
+            'cron',
+            hour='5,12,17,22',
+            minute=0
         )
         scheduler.start()
 
