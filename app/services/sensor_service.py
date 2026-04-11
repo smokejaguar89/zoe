@@ -26,7 +26,7 @@ class SensorService:
     async def get_snapshot(self) -> SensorSnapshot:
         bme280Reading = self.bme280.get_reading()
         tsl2591Reading = self.tsl2591.get_reading()
-        soilMoistureReading = self.soil_moisture.get_reading()
+        soilMoistureReading = await self.soil_moisture.get_reading()
 
         return SensorSnapshot(
             temperature=bme280Reading.ambient_temp_celsius,
