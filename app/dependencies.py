@@ -1,8 +1,6 @@
 import os
 from functools import lru_cache
 
-import board
-
 from app.clients.gemini_client import GeminiClient
 from app.clients.news_api_client import NewsApiClient
 from app.db.database import Database
@@ -12,6 +10,7 @@ from app.hardware.fake_drivers import (
     FakeSparkfunDriver,
     FakeTSL2591Driver,
 )
+from app.hardware.locked_i2c_bus import LockedI2CBus
 from app.hardware.sparkfun_driver import SparkfunDriver
 from app.hardware.tsl2591_driver import TSL2591Driver
 from app.scheduler.scheduler import Scheduler
@@ -19,8 +18,10 @@ from app.services.analytics_service import AnalyticsService
 from app.services.image_generation_service import ImageGenerationService
 from app.services.sensor_service import SensorService
 
-# Singleton I2C bus shared by all I2C-based hardware drivers
-i2c = board.I2C()
+# Singleton I2C bus wrapper for sensor drivers to share.
+# Enforces read locking to prevent concurrent access issues
+# on the shared physical bus/device.
+i2c_bus = LockedI2CBus()
 
 
 def is_test_mode() -> bool:
@@ -48,7 +49,7 @@ def get_bme280_driver():
     if is_test_mode():
         return FakeBME280Driver()
 
-    return BME280Driver(i2c=i2c)
+    return BME280Driver(i2c_bus=i2c_bus)
 
 
 @lru_cache
@@ -56,7 +57,7 @@ def get_tsl2591_driver():
     if is_test_mode():
         return FakeTSL2591Driver()
 
-    return TSL2591Driver(i2c=i2c)
+    return TSL2591Driver(i2c_bus=i2c_bus)
 
 
 @lru_cache

@@ -12,8 +12,14 @@ def test_get_reading_returns_bme280_reading(mock_bme280_ctor) -> None:
     mock_sensor.relative_humidity = 45.2
     mock_sensor.pressure = 1001.3
     mock_bme280_ctor.return_value = mock_sensor
-    mock_i2c = MagicMock()
-    sensor = BME280Driver(i2c=mock_i2c)
+    mock_i2c_bus = MagicMock()
+    mock_i2c_bus.raw_bus = MagicMock()
+
+    def run_passthrough(operation):
+        return operation()
+
+    mock_i2c_bus.run.side_effect = run_passthrough
+    sensor = BME280Driver(i2c_bus=mock_i2c_bus)
 
     # Act
     reading = sensor.get_reading()
@@ -24,6 +30,7 @@ def test_get_reading_returns_bme280_reading(mock_bme280_ctor) -> None:
     assert reading.relative_humidity_pct == 45.2
     assert reading.barometric_pressure_hpa == 1001.3
     mock_bme280_ctor.assert_called_once_with(
-        mock_i2c,
+        mock_i2c_bus.raw_bus,
         address=0x76,
     )
+    assert mock_i2c_bus.run.call_count == 1
