@@ -73,9 +73,7 @@ class _ImagePromptBuilder:
         prompt.append("#1: " + self.build_moisture_prompt(context.snapshot))
         prompt.append("#2: " + self.build_light_prompt(context.snapshot))
         prompt.append("#3: " + self.build_temperature_prompt(context.snapshot))
-        prompt.append(
-            "#4: " + self.build_time_of_day_prompt(context.weather)
-        )
+        prompt.append("#4: " + self.build_time_of_day_prompt(context.weather))
 
         # Image exterior
         prompt.append(
