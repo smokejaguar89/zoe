@@ -26,10 +26,11 @@ class GeminiServiceError(Exception):
 
 class GeminiService:
     def __init__(
-            self,
-            sensor_service=Depends(SensorService),
-            api_key: str | None = None,
-            model: str = DEFAULT_GEMINI_MODEL):
+        self,
+        sensor_service=Depends(SensorService),
+        api_key: str | None = None,
+        model: str = DEFAULT_GEMINI_MODEL,
+    ):
         self.sensor_service = sensor_service
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.model = model
@@ -40,10 +41,7 @@ class GeminiService:
             / "sunflower_base.jpg"
         )
         self.generated_image_dir = (
-            Path(__file__).resolve().parents[1]
-            / "static"
-            / "img"
-            / "gemini"
+            Path(__file__).resolve().parents[1] / "static" / "img" / "gemini"
         )
 
     async def generate_and_save_image(self) -> Path:
@@ -55,8 +53,8 @@ class GeminiService:
         return output_path
 
     def get_most_recent_image(
-            self,
-            max_age_minutes: int | None = None) -> Path | None:
+        self, max_age_minutes: int | None = None
+    ) -> Path | None:
         return self._find_most_recent_image(max_age_minutes=max_age_minutes)
 
     async def _generate_image(self) -> bytes:
@@ -80,9 +78,7 @@ class GeminiService:
                 ),
             )
         except genai_errors.APIError as error:
-            raise GeminiServiceError(
-                "Gemini API request failed."
-            ) from error
+            raise GeminiServiceError("Gemini API request failed.") from error
         image_bytes = self._extract_image_bytes(response)
         if image_bytes is None:
             raise GeminiServiceError(
@@ -136,8 +132,8 @@ class GeminiService:
         return datetime.now().strftime("%Y-%m-%d:%H:%M")
 
     def _find_most_recent_image(
-            self,
-            max_age_minutes: int | None) -> Path | None:
+        self, max_age_minutes: int | None
+    ) -> Path | None:
         if not self.generated_image_dir.exists():
             return None
 

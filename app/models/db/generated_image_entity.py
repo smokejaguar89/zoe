@@ -37,10 +37,11 @@ class GeneratedImageEntity(SQLModel, table=True):
 
     @classmethod
     def from_generated_image(
-            cls,
-            filename: str,
-            generated_at: datetime.datetime,
-            snapshot: SensorSnapshot) -> "GeneratedImageEntity":
+        cls,
+        filename: str,
+        generated_at: datetime.datetime,
+        snapshot: SensorSnapshot,
+    ) -> "GeneratedImageEntity":
         return cls(
             filename=filename,
             generated_at=generated_at,

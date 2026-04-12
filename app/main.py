@@ -42,11 +42,9 @@ async def lifespan(app: FastAPI):
     yield
     scheduler.stop()
 
+
 # --- 2. App Initialization ---
-app = FastAPI(
-    title="Zoe",
-    lifespan=lifespan
-)
+app = FastAPI(title="Zoe", lifespan=lifespan)
 
 # --- 3. Static Files & Templates ---
 # This tells FastAPI where to find your CSS, Images, and JS
@@ -54,8 +52,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # --- 4. Include Routers ---
 # This pulls in the code from your other files
-app.include_router(views.router)      # HTML pages
-app.include_router(api.router)    # JSON API endpoints
+app.include_router(views.router)  # HTML pages
+app.include_router(api.router)  # JSON API endpoints
 
 # --- 5. Global Middleware (Optional) ---
 # If you want to allow a specific local device to bypass CORS

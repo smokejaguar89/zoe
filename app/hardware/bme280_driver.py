@@ -21,7 +21,7 @@ class BME280Driver(LockedI2CBusDriver[BME280Reading]):
             return BME280Reading(
                 ambient_temp_celsius=self.bme280.temperature,
                 relative_humidity_pct=self.bme280.relative_humidity,
-                barometric_pressure_hpa=self.bme280.pressure
+                barometric_pressure_hpa=self.bme280.pressure,
             )
 
         return self._i2c_bus.run(_read)

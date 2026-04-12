@@ -1,4 +1,3 @@
-
 from app.models.domain.weather_snapshot import WeatherSnapshot, WeatherCode
 import requests
 
@@ -8,7 +7,6 @@ class OpenMeteoClientException(Exception):
 
 
 class OpenMeteoClient:
-
     def __init__(self):
         self.ZURICH_LAT = 47.3769
         self.ZURICH_LON = 8.5417
@@ -24,7 +22,7 @@ class OpenMeteoClient:
             "showers",
             "snowfall",
             "weather_code",
-            "cloud_cover"
+            "cloud_cover",
         ]
 
         try:
@@ -42,7 +40,8 @@ class OpenMeteoClient:
 
         if response.status_code != 200:
             raise OpenMeteoClientException(
-                f"Error fetching weather data: {response.status_code}")
+                f"Error fetching weather data: {response.status_code}"
+            )
 
         data = response.json()
         current = data.get("current", {})
@@ -56,5 +55,5 @@ class OpenMeteoClient:
             showers=current.get("showers"),
             snowfall=current.get("snowfall"),
             cloud_cover=current.get("cloud_cover"),
-            timestamp=data.get("current_time")
+            timestamp=data.get("current_time"),
         )

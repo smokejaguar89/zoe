@@ -30,10 +30,8 @@ class Database:
             session.commit()
 
     async def save_generated_image(
-            self,
-            filename: str,
-            generated_at: datetime,
-            snapshot: SensorSnapshot):
+        self, filename: str, generated_at: datetime, snapshot: SensorSnapshot
+    ):
         with Session(self.engine) as session:
             session.add(
                 GeneratedImageEntity.from_generated_image(
@@ -46,9 +44,8 @@ class Database:
 
     async def get_latest_generated_image(self) -> GeneratedImage:
         with Session(self.engine) as session:
-            statement = (
-                select(GeneratedImageEntity)
-                .order_by(GeneratedImageEntity.generated_at.desc())
+            statement = select(GeneratedImageEntity).order_by(
+                GeneratedImageEntity.generated_at.desc()
             )
             result = session.exec(statement).first()
             if result is None:
@@ -57,9 +54,8 @@ class Database:
             return result.to_generated_image()
 
     async def get_snapshots_between(
-            self,
-            start_time: datetime,
-            end_time: datetime) -> list[SensorSnapshot]:
+        self, start_time: datetime, end_time: datetime
+    ) -> list[SensorSnapshot]:
         with Session(self.engine) as session:
             statement = (
                 select(SensorSnapshotEntity)

@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -42,8 +41,8 @@ class WeatherSnapshot:
     temperature: float  # °C
     is_day: bool
     precipitation: float  # mm/h
-    rain: float          # mm/h
-    showers: float       # mm/h
-    snowfall: float      # cm/h
-    cloud_cover: float   # %
+    rain: float  # mm/h
+    showers: float  # mm/h
+    snowfall: float  # cm/h
+    cloud_cover: float  # %
     timestamp: datetime

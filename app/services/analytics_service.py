@@ -17,29 +17,30 @@ class AnalyticsService:
     async def get_last_week_snapshots(self) -> list[SensorSnapshot]:
         return await self.database.get_snapshots_between(
             start_time=datetime.now() - timedelta(days=7),
-            end_time=datetime.now()
+            end_time=datetime.now(),
         )
 
     async def get_last_week_average(self) -> SensorSnapshot:
         readings = await self.database.get_snapshots_between(
             start_time=datetime.now() - timedelta(days=7),
-            end_time=datetime.now()
+            end_time=datetime.now(),
         )
 
         if not readings:
             raise CalculationError(
-                "No sensor readings found for the past week.")
+                "No sensor readings found for the past week."
+            )
 
         total_readings = len(readings)
 
         return SensorSnapshot(
-            temperature=sum(
-                reading.temperature for reading in readings) / total_readings,
-            humidity=sum(reading.humidity for reading in readings) /
-            total_readings,
+            temperature=sum(reading.temperature for reading in readings)
+            / total_readings,
+            humidity=sum(reading.humidity for reading in readings)
+            / total_readings,
             light=sum(reading.light for reading in readings) / total_readings,
-            moisture=sum(reading.moisture for reading in readings) /
-            total_readings,
-            pressure=sum(reading.pressure for reading in readings) /
-            total_readings
+            moisture=sum(reading.moisture for reading in readings)
+            / total_readings,
+            pressure=sum(reading.pressure for reading in readings)
+            / total_readings,
         )

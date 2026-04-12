@@ -4,11 +4,9 @@ import logging
 from pathlib import Path
 from typing import Protocol
 
-from fastapi.params import Depends
-
 from app.db.database import Database
-from app.clients.gemini_client import GeminiClient
 from app.clients.news_api_client import NewsApiClient, NewsCategory
+from app.clients.open_meteo_client import OpenMeteoClient
 from app.models.domain.generated_image import GeneratedImage
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.sensor_service import (
@@ -24,22 +22,30 @@ from app.services.sensor_service import (
 logger = logging.getLogger(__name__)
 
 
+class ImageClientException(Exception):
+    pass
+
+
 class ImageClient(Protocol):
-    def generate_image(self, prompt: str, base_image_bytes: bytes) -> bytes:
-        ...
+    def generate_image(
+        self, prompt: str, base_image_bytes: bytes
+    ) -> bytes: ...
 
 
 class ImageGenerationService:
     def __init__(
-            self,
-            sensor_service: SensorService = Depends(SensorService),
-            image_client: ImageClient = Depends(GeminiClient),
-            database: Database = Depends(Database),
-            news_api_client: NewsApiClient = Depends(NewsApiClient)):
+        self,
+        sensor_service: SensorService,
+        image_client: ImageClient,
+        database: Database,
+        news_api_client: NewsApiClient,
+        open_meteo_client: OpenMeteoClient,
+    ):
         self.sensor_service = sensor_service
         self.image_client = image_client
         self.database = database
         self.news_api_client = news_api_client
+        self.open_meteo_client = open_meteo_client
         self.base_image_path = (
             Path(__file__).resolve().parents[1]
             / "static"
@@ -47,10 +53,7 @@ class ImageGenerationService:
             / "sunflower_window_base.jpeg"
         )
         self.generated_image_dir = (
-            Path(__file__).resolve().parents[1]
-            / "static"
-            / "img"
-            / "gemini"
+            Path(__file__).resolve().parents[1] / "static" / "img" / "gemini"
         )
 
     async def generate_and_save_image(self) -> Path:
@@ -63,9 +66,7 @@ class ImageGenerationService:
         )
         self.generated_image_dir.mkdir(parents=True, exist_ok=True)
         generated_at = datetime.now()
-        filename = (
-            f"sunflower_{self._timestamp_to_string(generated_at)}.jpg"
-        )
+        filename = f"sunflower_{self._timestamp_to_string(generated_at)}.jpg"
         output_path = self.generated_image_dir / filename
         output_path.write_bytes(image_bytes)
         await self.database.save_generated_image(
@@ -79,6 +80,8 @@ class ImageGenerationService:
         return await self.database.get_latest_generated_image()
 
     def _craft_image_prompt(self, snapshot: SensorSnapshot) -> str:
+
+        # Introduction
         prompt = [
             (
                 "Use the provided sunflower painting as the base image. "
@@ -86,35 +89,53 @@ class ImageGenerationService:
             )
         ]
 
+        # Image interior
+        prompt.append(
+            "Incorporate the following details about "
+            "the plant's current state:"
+        )
         prompt.append("#1: " + self._build_moisture_prompt(snapshot))
         prompt.append("#2: " + self._build_light_prompt(snapshot))
         prompt.append("#3: " + self._build_temperature_prompt(snapshot))
         prompt.append("#4: " + self._build_time_of_day_prompt(datetime.now()))
 
-        # Add top stories from news
-        category = random.choice([NewsCategory.SCIENCE, NewsCategory.GENERAL])
-        try:
-            top_stories = self.news_api_client.get_top_headlines(
-                category=category)
-            if top_stories:
-                top_story = top_stories[0]
-                prompt.append(
-                    "#5: Update the background landscape to incorporate "
-                    f"this story: {top_story}.")
-        except Exception as e:
-            logger.info(f"Could not fetch top stories: {e}")
+        # Image exterior
+        prompt.append(
+            "Incorporate the following information to update "
+            "the background landscape:"
+        )
 
-        if self._should_include_easter_egg():
-            easter_egg_prompt = self._get_easter_egg_prompt().strip()
-            if easter_egg_prompt:
-                prompt.append("#6: " + easter_egg_prompt)
+        weather_overview = self._get_weather_overview()
+        prompt.append("#1: " + weather_overview)
 
-        special_event_prompt = self._maybe_get_special_event_prompt().strip()
-        if special_event_prompt:
-            prompt.append("#7: " + special_event_prompt)
+        top_story = self._get_news_headline()
+        prompt.append(
+            "#2: Update the background landscape "
+            f"to incorporate this story: {top_story}."
+        )
 
+        # Conclusion
         prompt.append("Finally: Don't include any people in the image.")
 
+        return " ".join(prompt)
+
+    def _get_news_headline(self) -> str:
+        category = random.choice([NewsCategory.SCIENCE, NewsCategory.GENERAL])
+        stories = self.news_api_client.get_top_headlines(category=category)
+        if stories:
+            return stories[0]
+        raise ImageClientException(
+            "No news stories available to include in prompt."
+        )
+
+    def _get_weather_overview(self) -> str:
+        weather = self.open_meteo_client.get_current_weather_zurich()
+        prompt = []
+        prompt.append(
+            f"The current weather: "
+            f"{weather.weather_code.name.replace('_', ' ').lower()}."
+        )
+        prompt.append(f"The temperature outside is {weather.temperature}°C.")
         return " ".join(prompt)
 
     def _should_include_easter_egg(self) -> bool:

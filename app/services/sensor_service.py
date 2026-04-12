@@ -14,11 +14,7 @@ TEMPERATURE_COMFORT_C_UPPER_THRESHOLD = 27.0
 
 
 class SensorService:
-    def __init__(
-            self,
-            bme280,
-            tsl2591,
-            soil_moisture):
+    def __init__(self, bme280, tsl2591, soil_moisture):
         self.bme280 = bme280
         self.tsl2591 = tsl2591
         self.soil_moisture = soil_moisture
@@ -34,5 +30,5 @@ class SensorService:
             pressure=bme280Reading.barometric_pressure_hpa,
             light=tsl2591Reading.luminous_flux,
             moisture=soilMoistureReading.soil_hydration,
-            timestamp=datetime.now(timezone.utc)
+            timestamp=datetime.now(timezone.utc),
         )

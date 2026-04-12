@@ -70,10 +70,13 @@ def test_get_current_weather_zurich_raises_for_non_200_response() -> None:
     mock_response.status_code = 503
 
     # Act
-    with patch(
-        "app.clients.open_meteo_client.requests.get",
-        return_value=mock_response,
-    ), pytest.raises(OpenMeteoClientException) as error:
+    with (
+        patch(
+            "app.clients.open_meteo_client.requests.get",
+            return_value=mock_response,
+        ),
+        pytest.raises(OpenMeteoClientException) as error,
+    ):
         client.get_current_weather_zurich()
 
     # Assert
@@ -85,10 +88,13 @@ def test_get_current_weather_zurich_raises_for_request_exception() -> None:
     client = OpenMeteoClient()
 
     # Act
-    with patch(
-        "app.clients.open_meteo_client.requests.get",
-        side_effect=requests.RequestException("network down"),
-    ), pytest.raises(OpenMeteoClientException) as error:
+    with (
+        patch(
+            "app.clients.open_meteo_client.requests.get",
+            side_effect=requests.RequestException("network down"),
+        ),
+        pytest.raises(OpenMeteoClientException) as error,
+    ):
         client.get_current_weather_zurich()
 
     # Assert

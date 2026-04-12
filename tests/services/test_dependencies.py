@@ -37,16 +37,20 @@ def test_i2c_driver_providers_share_one_i2c_bus(monkeypatch):
     monkeypatch.delenv("SENSOR_MODE", raising=False)
     reloaded_dependencies = reload_dependencies()
 
-    with patch(
-        "app.hardware.locked_i2c_bus.board.I2C",
-        return_value=object(),
-    ), patch.object(
-        reloaded_dependencies,
-        "BME280Driver",
-    ) as mock_bme280_driver, patch.object(
-        reloaded_dependencies,
-        "TSL2591Driver",
-    ) as mock_tsl2591_driver:
+    with (
+        patch(
+            "app.hardware.locked_i2c_bus.board.I2C",
+            return_value=object(),
+        ),
+        patch.object(
+            reloaded_dependencies,
+            "BME280Driver",
+        ) as mock_bme280_driver,
+        patch.object(
+            reloaded_dependencies,
+            "TSL2591Driver",
+        ) as mock_tsl2591_driver,
+    ):
         mock_bme280_driver.side_effect = lambda i2c_bus: type(
             "StubBME280Driver",
             (),

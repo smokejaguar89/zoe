@@ -5,6 +5,7 @@ from functools import lru_cache
 
 from app.clients.gemini_client import GeminiClient
 from app.clients.news_api_client import NewsApiClient
+from app.clients.open_meteo_client import OpenMeteoClient
 from app.db.database import Database
 from app.hardware.fake_drivers import (
     FakeBME280Driver,
@@ -90,12 +91,17 @@ def get_news_api_client() -> NewsApiClient:
     return NewsApiClient(api_key=os.getenv("NEWS_API_KEY"))
 
 
+def get_open_meteo_client() -> OpenMeteoClient:
+    return OpenMeteoClient()
+
+
 def get_image_generation_service() -> ImageGenerationService:
     return ImageGenerationService(
         sensor_service=get_sensor_service(),
         image_client=get_gemini_client(),
         database=get_database(),
         news_api_client=get_news_api_client(),
+        open_meteo_client=get_open_meteo_client(),
     )
 
 

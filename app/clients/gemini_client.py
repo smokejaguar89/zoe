@@ -13,9 +13,8 @@ class GeminiClientError(Exception):
 
 class GeminiClient:
     def __init__(
-            self,
-            api_key: str | None = None,
-            model: str = DEFAULT_GEMINI_MODEL):
+        self, api_key: str | None = None, model: str = DEFAULT_GEMINI_MODEL
+    ):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.model = model
 
@@ -39,9 +38,7 @@ class GeminiClient:
                 ),
             )
         except genai_errors.APIError as error:
-            raise GeminiClientError(
-                "Gemini API request failed."
-            ) from error
+            raise GeminiClientError("Gemini API request failed.") from error
 
         image_bytes = self._extract_image_bytes(response)
         if image_bytes is None:

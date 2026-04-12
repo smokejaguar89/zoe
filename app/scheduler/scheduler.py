@@ -13,10 +13,11 @@ logger = logging.getLogger(__name__)
 
 class Scheduler:
     def __init__(
-            self,
-            sensor_service: SensorService,
-            database: Database,
-            image_generation_service: ImageGenerationService):
+        self,
+        sensor_service: SensorService,
+        database: Database,
+        image_generation_service: ImageGenerationService,
+    ):
         self.sensor_service = sensor_service
         self.database = database
         self.image_generation_service = image_generation_service
@@ -37,16 +38,9 @@ class Scheduler:
         asyncio.run(self._generate_image_job())
 
     def start(self):
+        scheduler.add_job(self._run_collect_data_job, "interval", minutes=15)
         scheduler.add_job(
-            self._run_collect_data_job,
-            'interval',
-            minutes=15
-        )
-        scheduler.add_job(
-            self._run_generate_image_job,
-            'cron',
-            hour='5,12,17,22',
-            minute=0
+            self._run_generate_image_job, "cron", hour="5,12,17,22", minute=0
         )
         scheduler.start()
 

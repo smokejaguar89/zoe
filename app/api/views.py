@@ -26,24 +26,23 @@ router = APIRouter()
 
 @router.get("/", response_class=HTMLResponse)
 async def load_homepage(
-        request: Request,
-        sensor_service: SensorService = Depends(get_sensor_service),
-        analytics_service: AnalyticsService = Depends(
-            get_analytics_service,
-        ),
-        image_generation_service: ImageGenerationService = Depends(
-            get_image_generation_service,
-        )) -> HTMLResponse:
+    request: Request,
+    sensor_service: SensorService = Depends(get_sensor_service),
+    analytics_service: AnalyticsService = Depends(
+        get_analytics_service,
+    ),
+    image_generation_service: ImageGenerationService = Depends(
+        get_image_generation_service,
+    ),
+) -> HTMLResponse:
     generated_image_url = None
     generated_image_generated_at = None
     generated_image_snapshot = None
-    generated_image = await (
-        image_generation_service.get_latest_generated_image()
+    generated_image = (
+        await image_generation_service.get_latest_generated_image()
     )
     if generated_image is not None:
-        generated_image_url = (
-            f"/static/img/gemini/{generated_image.filename}"
-        )
+        generated_image_url = f"/static/img/gemini/{generated_image.filename}"
         generated_image_generated_at = generated_image.generated_at.strftime(
             "%Y-%m-%d:%H:%M"
         )
@@ -51,9 +50,9 @@ async def load_homepage(
 
     # Data you want to pass to your HTML
     sensor_snapshot = await sensor_service.get_snapshot()
-    snapshots: List[SensorSnapshot] = (
-        await analytics_service.get_last_week_snapshots()
-    )
+    snapshots: List[
+        SensorSnapshot
+    ] = await analytics_service.get_last_week_snapshots()
     time_series = []
     for index, snapshot in enumerate(snapshots):
         timestamp = getattr(snapshot, "timestamp", None)
@@ -86,5 +85,5 @@ async def load_homepage(
             "generated_image_path": generated_image_url,
             "generated_image_generated_at": generated_image_generated_at,
             "generated_image_snapshot": generated_image_snapshot,
-        }
+        },
     )

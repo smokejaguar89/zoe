@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.dto.get_sensor_data_response import GetSensorDataResponse
 from app.models.dto.get_time_series_response import (
-    GetTimeSeriesResponse, SensorSnapshotDto)
+    GetTimeSeriesResponse,
+    SensorSnapshotDto,
+)
 from app.dependencies import get_analytics_service, get_sensor_service
 from app.services.analytics_service import AnalyticsService, CalculationError
 from app.services.sensor_service import SensorService
@@ -34,6 +36,7 @@ async def get_time_series(
     analytics_service: AnalyticsService = Depends(get_analytics_service),
 ):
     snapshots = await analytics_service.get_last_week_snapshots()
-    snapshot_dtos = [SensorSnapshotDto.model_validate(
-        snapshot) for snapshot in snapshots]
+    snapshot_dtos = [
+        SensorSnapshotDto.model_validate(snapshot) for snapshot in snapshots
+    ]
     return GetTimeSeriesResponse(snapshots=snapshot_dtos)

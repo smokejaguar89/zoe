@@ -36,4 +36,4 @@ class PerigonClient:
             return []
 
         data = response.json()
-        return [story['name'] for story in data.get('results', [])]
+        return [story["name"] for story in data.get("results", [])]
