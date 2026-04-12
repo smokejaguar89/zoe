@@ -45,7 +45,7 @@ def test_start_adds_job_and_starts_scheduler(
     scheduler_service.start()
 
     # Assert
-    assert add_job.call_count == 3
+    assert add_job.call_count == 2
     first_args, first_kwargs = add_job.call_args_list[0]
     assert first_args[0] == scheduler_service._run_collect_data_job
     assert first_args[1] == "interval"
@@ -53,14 +53,9 @@ def test_start_adds_job_and_starts_scheduler(
 
     second_args, second_kwargs = add_job.call_args_list[1]
     assert second_args[0] == scheduler_service._run_generate_image_job
-    assert second_args[1] == "interval"
-    assert second_kwargs["minutes"] == 1
-
-    third_args, third_kwargs = add_job.call_args_list[2]
-    assert third_args[0] == scheduler_service._run_generate_image_job
-    assert third_args[1] == "cron"
-    assert third_kwargs["hour"] == "5,12,17,22"
-    assert third_kwargs["minute"] == 0
+    assert second_args[1] == "cron"
+    assert second_kwargs["hour"] == "6,10,14,18,22"
+    assert second_kwargs["minute"] == 0
     start.assert_called_once()
 
 
