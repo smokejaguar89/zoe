@@ -1,7 +1,7 @@
 from datetime import datetime
 
+import httpx
 from app.models.domain.weather_snapshot import WeatherSnapshot, WeatherCode
-import requests
 
 
 class OpenMeteoClientError(Exception):
@@ -14,7 +14,7 @@ class OpenMeteoClient:
         self.ZURICH_LON = 8.5417
         self.api_url = "https://api.open-meteo.com/v1/forecast"
 
-    def get_current_weather_zurich(self) -> WeatherSnapshot:
+    async def get_current_weather_zurich(self) -> WeatherSnapshot:
         FIELDS = [
             "wind_speed_10m",
             "temperature_2m",
@@ -28,16 +28,17 @@ class OpenMeteoClient:
         ]
 
         try:
-            response = requests.get(
-                self.api_url,
-                params={
-                    "latitude": self.ZURICH_LAT,
-                    "longitude": self.ZURICH_LON,
-                    "models": "meteoswiss_icon_ch1",
-                    "current": ",".join(FIELDS),
-                },
-            )
-        except requests.RequestException as e:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    self.api_url,
+                    params={
+                        "latitude": self.ZURICH_LAT,
+                        "longitude": self.ZURICH_LON,
+                        "models": "meteoswiss_icon_ch1",
+                        "current": ",".join(FIELDS),
+                    },
+                )
+        except httpx.RequestError as e:
             raise OpenMeteoClientError(f"Error fetching weather data: {e}")
 
         if response.status_code != 200:

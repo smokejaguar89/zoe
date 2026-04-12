@@ -1,4 +1,5 @@
-from unittest.mock import MagicMock, patch
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -31,17 +32,24 @@ def test_get_top_headlines_returns_titles_for_200_response() -> None:
             {"title": "Headline 2"},
         ]
     }
+    mock_http_client = AsyncMock()
+    mock_http_client.get = AsyncMock(return_value=mock_response)
 
     # Act
     with patch(
-        "app.clients.news_api_client.requests.get",
-        return_value=mock_response,
-    ) as mock_get:
-        headlines = client.get_top_headlines(category=NewsCategory.SCIENCE)
+        "app.clients.news_api_client.httpx.AsyncClient"
+    ) as MockAsyncClient:
+        MockAsyncClient.return_value.__aenter__ = AsyncMock(
+            return_value=mock_http_client
+        )
+        MockAsyncClient.return_value.__aexit__ = AsyncMock(return_value=None)
+        headlines = asyncio.run(
+            client.get_top_headlines(category=NewsCategory.SCIENCE)
+        )
 
     # Assert
     assert headlines == ["Headline 1", "Headline 2"]
-    mock_get.assert_called_once_with(
+    mock_http_client.get.assert_called_once_with(
         "https://newsapi.org/v2/top-headlines",
         params={
             "category": "science",
@@ -56,13 +64,21 @@ def test_get_top_headlines_raises_for_non_200_response() -> None:
     mock_response = MagicMock()
     mock_response.status_code = 429
     mock_response.text = "rate limited"
+    mock_http_client = AsyncMock()
+    mock_http_client.get = AsyncMock(return_value=mock_response)
 
     # Act
     with patch(
-        "app.clients.news_api_client.requests.get",
-        return_value=mock_response,
-    ), pytest.raises(NewsApiClientError) as error:
-        client.get_top_headlines(category=NewsCategory.GENERAL)
+        "app.clients.news_api_client.httpx.AsyncClient"
+    ) as MockAsyncClient:
+        MockAsyncClient.return_value.__aenter__ = AsyncMock(
+            return_value=mock_http_client
+        )
+        MockAsyncClient.return_value.__aexit__ = AsyncMock(return_value=None)
+        with pytest.raises(NewsApiClientError) as error:
+            asyncio.run(
+                client.get_top_headlines(category=NewsCategory.GENERAL)
+            )
 
     # Assert
     assert (

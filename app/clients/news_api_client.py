@@ -1,4 +1,4 @@
-import requests
+import httpx
 import os
 
 from enum import Enum
@@ -24,7 +24,7 @@ class NewsApiClient:
         if not self.api_key:
             raise NewsApiClientError("NEWS_API_KEY is not configured.")
 
-    def get_top_headlines(
+    async def get_top_headlines(
         self, category: NewsCategory = NewsCategory.GENERAL
     ) -> list[str]:
         url = "https://newsapi.org/v2/top-headlines"
@@ -32,7 +32,8 @@ class NewsApiClient:
             "category": category.value,
             "apiKey": self.api_key,
         }
-        response = requests.get(url, params=params)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
         if response.status_code == 200:
             return [
                 article["title"]

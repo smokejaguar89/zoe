@@ -1,9 +1,10 @@
+import asyncio
 from datetime import datetime
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
-import requests
 
 from app.clients.open_meteo_client import (
     OpenMeteoClient,
@@ -32,12 +33,18 @@ def test_get_current_weather_zurich_returns_weather_snapshot() -> None:
         }
     }
 
+    mock_http_client = AsyncMock()
+    mock_http_client.get = AsyncMock(return_value=mock_response)
+
     # Act
     with patch(
-        "app.clients.open_meteo_client.requests.get",
-        return_value=mock_response,
-    ) as mock_get:
-        weather = client.get_current_weather_zurich()
+        "app.clients.open_meteo_client.httpx.AsyncClient"
+    ) as MockAsyncClient:
+        MockAsyncClient.return_value.__aenter__ = AsyncMock(
+            return_value=mock_http_client
+        )
+        MockAsyncClient.return_value.__aexit__ = AsyncMock(return_value=None)
+        weather = asyncio.run(client.get_current_weather_zurich())
 
     # Assert
     assert weather.weather_code == WeatherCode.PARTLY_CLOUDY
@@ -51,7 +58,7 @@ def test_get_current_weather_zurich_returns_weather_snapshot() -> None:
     assert weather.cloud_cover == 42
     assert weather.timestamp == datetime(2026, 4, 12, 10, 0)
 
-    mock_get.assert_called_once_with(
+    mock_http_client.get.assert_called_once_with(
         client.api_url,
         params={
             "latitude": client.ZURICH_LAT,
@@ -70,16 +77,19 @@ def test_get_current_weather_zurich_raises_for_non_200_response() -> None:
     client = OpenMeteoClient()
     mock_response = MagicMock()
     mock_response.status_code = 503
+    mock_http_client = AsyncMock()
+    mock_http_client.get = AsyncMock(return_value=mock_response)
 
     # Act
-    with (
-        patch(
-            "app.clients.open_meteo_client.requests.get",
-            return_value=mock_response,
-        ),
-        pytest.raises(OpenMeteoClientError) as error,
-    ):
-        client.get_current_weather_zurich()
+    with patch(
+        "app.clients.open_meteo_client.httpx.AsyncClient"
+    ) as MockAsyncClient:
+        MockAsyncClient.return_value.__aenter__ = AsyncMock(
+            return_value=mock_http_client
+        )
+        MockAsyncClient.return_value.__aexit__ = AsyncMock(return_value=None)
+        with pytest.raises(OpenMeteoClientError) as error:
+            asyncio.run(client.get_current_weather_zurich())
 
     # Assert
     assert str(error.value) == "Error fetching weather data: 503"
@@ -88,16 +98,21 @@ def test_get_current_weather_zurich_raises_for_non_200_response() -> None:
 def test_get_current_weather_zurich_raises_for_request_exception() -> None:
     # Arrange
     client = OpenMeteoClient()
+    mock_http_client = AsyncMock()
+    mock_http_client.get = AsyncMock(
+        side_effect=httpx.RequestError("network down")
+    )
 
     # Act
-    with (
-        patch(
-            "app.clients.open_meteo_client.requests.get",
-            side_effect=requests.RequestException("network down"),
-        ),
-        pytest.raises(OpenMeteoClientError) as error,
-    ):
-        client.get_current_weather_zurich()
+    with patch(
+        "app.clients.open_meteo_client.httpx.AsyncClient"
+    ) as MockAsyncClient:
+        MockAsyncClient.return_value.__aenter__ = AsyncMock(
+            return_value=mock_http_client
+        )
+        MockAsyncClient.return_value.__aexit__ = AsyncMock(return_value=None)
+        with pytest.raises(OpenMeteoClientError) as error:
+            asyncio.run(client.get_current_weather_zurich())
 
     # Assert
     assert str(error.value) == "Error fetching weather data: network down"

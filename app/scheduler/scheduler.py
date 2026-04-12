@@ -39,6 +39,8 @@ class Scheduler:
 
     def start(self):
         scheduler.add_job(self._run_collect_data_job, "interval", minutes=15)
+        # For testing
+        # scheduler.add_job(self._run_generate_image_job, "interval", minutes=1)
         scheduler.add_job(
             self._run_generate_image_job, "cron", hour="5,12,17,22", minute=0
         )

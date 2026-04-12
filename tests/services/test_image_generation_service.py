@@ -20,7 +20,7 @@ def _make_open_meteo_client_mock() -> MagicMock:
     mock_weather.weather_code.name = "CLEAR_SKY"
     mock_weather.temperature = 20.0
     client = MagicMock()
-    client.get_current_weather_zurich.return_value = mock_weather
+    client.get_current_weather_zurich = AsyncMock(return_value=mock_weather)
     return client
 
 
@@ -31,7 +31,7 @@ def _make_news_api_client_mock(
     client = MagicMock()
     if headlines is None:
         headlines = []
-    client.get_top_headlines.return_value = headlines
+    client.get_top_headlines = AsyncMock(return_value=headlines)
     return client
 
 
@@ -47,7 +47,7 @@ def test_generate_and_save_image_writes_expected_jpg_name(tmp_path) -> None:
     sensor_service = MagicMock()
     sensor_service.get_snapshot = AsyncMock(return_value=snapshot)
     image_client = MagicMock()
-    image_client.generate_image = MagicMock(return_value=b"jpg-bytes")
+    image_client.generate_image = AsyncMock(return_value=b"jpg-bytes")
     database = MagicMock()
     database.save_generated_image = AsyncMock()
     service = ImageGenerationService(
@@ -60,7 +60,7 @@ def test_generate_and_save_image_writes_expected_jpg_name(tmp_path) -> None:
     service.generated_image_dir = tmp_path
     service.base_image_path = tmp_path / "sunflower_base.jpg"
     service.base_image_path.write_bytes(b"base-image")
-    service._craft_image_prompt = MagicMock(return_value="plant prompt")
+    service._craft_image_prompt = AsyncMock(return_value="plant prompt")
     service._timestamp_to_string = MagicMock(return_value="2026-04-03:13:39")
 
     # Act
@@ -118,11 +118,11 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
     sensor_service = MagicMock()
     sensor_service.get_snapshot = AsyncMock(return_value=snapshot)
     image_client = MagicMock()
-    image_client.generate_image = MagicMock(return_value=b"jpg-bytes")
+    image_client.generate_image = AsyncMock(return_value=b"jpg-bytes")
     database = MagicMock()
     database.save_generated_image = AsyncMock()
     news_api_client = MagicMock()
-    news_api_client.get_top_headlines = MagicMock(return_value=["Story 1"])
+    news_api_client.get_top_headlines = AsyncMock(return_value=["Story 1"])
     service = ImageGenerationService(
         sensor_service=sensor_service,
         image_client=image_client,
@@ -183,11 +183,11 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
     sensor_service = MagicMock()
     sensor_service.get_snapshot = AsyncMock(return_value=snapshot)
     image_client = MagicMock()
-    image_client.generate_image = MagicMock(return_value=b"jpg-bytes")
+    image_client.generate_image = AsyncMock(return_value=b"jpg-bytes")
     database = MagicMock()
     database.save_generated_image = AsyncMock()
     news_api_client = MagicMock()
-    news_api_client.get_top_headlines = MagicMock(return_value=["Story 1"])
+    news_api_client.get_top_headlines = AsyncMock(return_value=["Story 1"])
     service = ImageGenerationService(
         sensor_service=sensor_service,
         image_client=image_client,
@@ -231,23 +231,21 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
     )
 
 
-def test_get_weather_overview_formats_weather_snapshot_correctly() -> None:
+def test_prompt_builder_formats_weather_snapshot_correctly() -> None:
     # Arrange
     mock_weather = MagicMock()
     mock_weather.weather_code.name = "RAIN_MODERATE"
     mock_weather.temperature = 12.5
-    open_meteo_client = MagicMock()
-    open_meteo_client.get_current_weather_zurich.return_value = mock_weather
     service = ImageGenerationService(
         sensor_service=MagicMock(),
         image_client=MagicMock(),
         database=MagicMock(),
         news_api_client=_make_news_api_client_mock(),
-        open_meteo_client=open_meteo_client,
+        open_meteo_client=MagicMock(),
     )
 
     # Act
-    overview = service._get_weather_overview()
+    overview = service._prompt_builder.build_weather_overview(mock_weather)
 
     # Assert
     assert overview == (
@@ -256,7 +254,7 @@ def test_get_weather_overview_formats_weather_snapshot_correctly() -> None:
     )
 
 
-def test_get_weather_overview_calls_open_meteo_client() -> None:
+def test_get_weather_snapshot_calls_open_meteo_client() -> None:
     # Arrange
     open_meteo_client = _make_open_meteo_client_mock()
     service = ImageGenerationService(
@@ -268,7 +266,7 @@ def test_get_weather_overview_calls_open_meteo_client() -> None:
     )
 
     # Act
-    service._get_weather_overview()
+    asyncio.run(service._get_weather_snapshot())
 
     # Assert
     open_meteo_client.get_current_weather_zurich.assert_called_once()
@@ -312,7 +310,7 @@ def test_craft_image_prompt_includes_top_stories(
     image_client = MagicMock()
     database = MagicMock()
     news_api_client = MagicMock()
-    news_api_client.get_top_headlines = MagicMock(
+    news_api_client.get_top_headlines = AsyncMock(
         return_value=[
             "Breaking: AI advances reshape tech industry",
             "Climate summit reaches historic agreement",
@@ -345,7 +343,7 @@ def test_craft_image_prompt_includes_top_stories(
     )
 
     # Act
-    prompt = service._craft_image_prompt(snapshot)
+    prompt = asyncio.run(service._craft_image_prompt(snapshot))
 
     # Assert
     assert prompt == expected_prompt
@@ -370,7 +368,7 @@ def test_craft_image_prompt_handles_empty_stories(
     image_client = MagicMock()
     database = MagicMock()
     news_api_client = MagicMock()
-    news_api_client.get_top_headlines = MagicMock(return_value=[])
+    news_api_client.get_top_headlines = AsyncMock(return_value=[])
     service = ImageGenerationService(
         sensor_service=sensor_service,
         image_client=image_client,
@@ -384,7 +382,7 @@ def test_craft_image_prompt_handles_empty_stories(
         ImageGenerationServiceError,
         match="No news stories available to include in prompt.",
     ):
-        service._craft_image_prompt(snapshot)
+        asyncio.run(service._craft_image_prompt(snapshot))
 
     news_api_client.get_top_headlines.assert_called_once()
 
@@ -407,7 +405,7 @@ def test_craft_image_prompt_handles_news_api_error(
     image_client = MagicMock()
     database = MagicMock()
     news_api_client = MagicMock()
-    news_api_client.get_top_headlines = MagicMock(
+    news_api_client.get_top_headlines = AsyncMock(
         side_effect=Exception("API error")
     )
     service = ImageGenerationService(
@@ -420,7 +418,7 @@ def test_craft_image_prompt_handles_news_api_error(
     mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
     # Act / Assert
     with pytest.raises(Exception, match="API error"):
-        service._craft_image_prompt(snapshot)
+        asyncio.run(service._craft_image_prompt(snapshot))
 
     news_api_client.get_top_headlines.assert_called_once()
 
@@ -443,7 +441,7 @@ def test_craft_image_prompt_uses_only_first_story(
     image_client = MagicMock()
     database = MagicMock()
     news_api_client = MagicMock()
-    news_api_client.get_top_headlines = MagicMock(
+    news_api_client.get_top_headlines = AsyncMock(
         return_value=[
             "Story 1",
             "Story 2",
@@ -478,7 +476,7 @@ def test_craft_image_prompt_uses_only_first_story(
     )
 
     # Act
-    prompt = service._craft_image_prompt(snapshot)
+    prompt = asyncio.run(service._craft_image_prompt(snapshot))
 
     # Assert
     assert prompt == expected_prompt
