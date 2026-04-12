@@ -6,6 +6,7 @@ import pytest
 
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.image_generation_service import (
+    DayPhase,
     ImageGenerationServiceError,
     ImageGenerationService,
 )
@@ -19,6 +20,8 @@ def _make_open_meteo_client_mock() -> MagicMock:
     mock_weather = MagicMock()
     mock_weather.weather_code.name = "CLEAR_SKY"
     mock_weather.temperature = 20.0
+    mock_weather.sunrise = datetime(2026, 4, 9, 6, 0)
+    mock_weather.sunset = datetime(2026, 4, 9, 20, 0)
     client = MagicMock()
     client.get_current_weather_zurich = AsyncMock(return_value=mock_weather)
     return client
@@ -147,7 +150,7 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
         "#1: Keep the sunflower healthy and the soil well hydrated. "
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
-        "#4: Make the scene look like it's afternoon. "
+        "#4: Make the scene look like it's day. "
         "Incorporate the following information to update the "
         "background landscape: "
         "#1: The current weather: clear sky. "
@@ -333,7 +336,7 @@ def test_craft_image_prompt_includes_top_stories(
         "#1: Keep the sunflower healthy and the soil well hydrated. "
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
-        "#4: Make the scene look like it's afternoon. "
+        "#4: Make the scene look like it's day. "
         "Incorporate the following information to update the "
         "background landscape: "
         "#1: The current weather: clear sky. "
@@ -466,7 +469,7 @@ def test_craft_image_prompt_uses_only_first_story(
         "#1: Keep the sunflower healthy and the soil well hydrated. "
         "#2: Use soft, natural indoor lighting. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
-        "#4: Make the scene look like it's afternoon. "
+        "#4: Make the scene look like it's day. "
         "Incorporate the following information to update the "
         "background landscape: "
         "#1: The current weather: clear sky. "
@@ -486,3 +489,45 @@ def test_craft_image_prompt_uses_only_first_story(
     assert "Story 3" not in prompt
     assert "Story 4" not in prompt
     assert "Story 5" not in prompt
+
+
+@patch("app.services.image_generation_service.datetime")
+def test_get_time_of_day_returns_sunrise(mock_datetime) -> None:
+    # Arrange
+    service = ImageGenerationService(
+        sensor_service=MagicMock(),
+        image_client=MagicMock(),
+        database=MagicMock(),
+        news_api_client=_make_news_api_client_mock(),
+        open_meteo_client=_make_open_meteo_client_mock(),
+    )
+    sunrise = datetime(2026, 4, 12, 6, 0)
+    sunset = datetime(2026, 4, 12, 20, 0)
+    mock_datetime.now.return_value = datetime(2026, 4, 12, 7, 0)
+
+    # Act
+    phase = service._prompt_builder._get_time_of_day(sunrise, sunset)
+
+    # Assert
+    assert phase == DayPhase.SUNRISE
+
+
+@patch("app.services.image_generation_service.datetime")
+def test_get_time_of_day_returns_night(mock_datetime) -> None:
+    # Arrange
+    service = ImageGenerationService(
+        sensor_service=MagicMock(),
+        image_client=MagicMock(),
+        database=MagicMock(),
+        news_api_client=_make_news_api_client_mock(),
+        open_meteo_client=_make_open_meteo_client_mock(),
+    )
+    sunrise = datetime(2026, 4, 12, 6, 0)
+    sunset = datetime(2026, 4, 12, 20, 0)
+    mock_datetime.now.return_value = datetime(2026, 4, 12, 1, 0)
+
+    # Act
+    phase = service._prompt_builder._get_time_of_day(sunrise, sunset)
+
+    # Assert
+    assert phase == DayPhase.NIGHT

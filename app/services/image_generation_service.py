@@ -5,6 +5,7 @@ from datetime import datetime
 import logging
 from pathlib import Path
 from typing import Optional, Protocol
+from enum import Enum
 
 from app.db.database import Database
 from app.clients.news_api_client import NewsApiClient, NewsCategory
@@ -23,6 +24,13 @@ from app.services.sensor_service import (
 
 
 logger = logging.getLogger(__name__)
+
+
+class DayPhase(Enum):
+    SUNRISE = "sunrise"
+    DAY = "day"
+    SUNSET = "sunset"
+    NIGHT = "night"
 
 
 class ImageGenerationServiceError(Exception):
@@ -64,10 +72,10 @@ class _ImagePromptBuilder:
         )
         prompt.append("#1: " + self.build_moisture_prompt(context.snapshot))
         prompt.append("#2: " + self.build_light_prompt(context.snapshot))
+        prompt.append("#3: " + self.build_temperature_prompt(context.snapshot))
         prompt.append(
-            "#3: " + self.build_temperature_prompt(context.snapshot)
+            "#4: " + self.build_time_of_day_prompt(context.weather)
         )
-        prompt.append("#4: " + self.build_time_of_day_prompt(now))
 
         # Image exterior
         prompt.append(
@@ -117,18 +125,32 @@ class _ImagePromptBuilder:
             f"{weather.weather_code.name.replace('_', ' ').lower()}."
         )
         prompt.append(f"The temperature outside is {weather.temperature}°C.")
+
         return " ".join(prompt)
 
-    def build_time_of_day_prompt(self, time: datetime) -> str:
-        hour = time.hour
-        if 5 <= hour < 12:
-            return "Make the scene look like it's morning."
-        elif 12 <= hour < 17:
-            return "Make the scene look like it's afternoon."
-        elif 17 <= hour < 21:
-            return "Make the scene look like it's evening."
+    def build_time_of_day_prompt(
+        self, weather_snapshot: WeatherSnapshot
+    ) -> str:
+        time_of_day = self._get_time_of_day(
+            weather_snapshot.sunrise, weather_snapshot.sunset
+        )
+        return f"Make the scene look like it's {time_of_day.value}."
+
+    def _get_time_of_day(self, sunrise: int, sunset: int) -> DayPhase:
+        hour = datetime.now().hour
+        sunrise = sunrise.hour
+        sunrise_end = sunrise + 2
+        sunset = sunset.hour
+        sunset_end = sunset + 2
+
+        if sunrise <= hour < sunrise_end:
+            return DayPhase.SUNRISE
+        elif sunrise_end <= hour < sunset:
+            return DayPhase.DAY
+        elif sunset <= hour < sunset_end:
+            return DayPhase.SUNSET
         else:
-            return "Make the scene look like it's night."
+            return DayPhase.NIGHT
 
 
 class ImageGenerationService:

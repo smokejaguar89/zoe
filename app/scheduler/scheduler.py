@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timedelta
 import logging
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -9,6 +10,8 @@ from app.services.sensor_service import SensorService
 
 scheduler = BackgroundScheduler()
 logger = logging.getLogger(__name__)
+RETRY_DELAY_MINUTES = 5
+RETRY_JOB_ID = "generate_image_retry"
 
 
 class Scheduler:
@@ -35,14 +38,41 @@ class Scheduler:
         await self.image_generation_service.generate_and_save_image()
 
     def _run_generate_image_job(self):
-        asyncio.run(self._generate_image_job())
+        try:
+            asyncio.run(self._generate_image_job())
+        except Exception:
+            logger.exception(
+                "Image generation job failed. Scheduling retry in %d minutes.",
+                RETRY_DELAY_MINUTES,
+            )
+            self._schedule_generate_image_retry()
+
+    def _schedule_generate_image_retry(self):
+        retry_at = datetime.now() + timedelta(minutes=RETRY_DELAY_MINUTES)
+        scheduler.add_job(
+            self._run_generate_image_job,
+            "date",
+            run_date=retry_at,
+            id=RETRY_JOB_ID,
+            replace_existing=True,
+        )
 
     def start(self):
         scheduler.add_job(self._run_collect_data_job, "interval", minutes=15)
         # For testing
-        # scheduler.add_job(self._run_generate_image_job, "interval", minutes=1)
+        scheduler.add_job(self._run_generate_image_job, "interval", minutes=1)
+
+        IMAGE_GEN_CRON_SCHEDULE = [
+            5,  # Clara wakes up
+            12,  # Nick probably awake - lunch time
+            18,  # Evening, probably home
+            22,  # Night time, maybe one last image before bed
+        ]
         scheduler.add_job(
-            self._run_generate_image_job, "cron", hour="5,12,17,22", minute=0
+            self._run_generate_image_job,
+            "cron",
+            hour=",".join(map(str, IMAGE_GEN_CRON_SCHEDULE)),
+            minute=0,
         )
         scheduler.start()
 

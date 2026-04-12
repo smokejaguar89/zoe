@@ -12,9 +12,7 @@ from app.clients.gemini_client import (
 
 def _make_response_with_image(data: bytes = b"generated-image") -> MagicMock:
     response = MagicMock()
-    response.parts = [
-        MagicMock(inline_data=MagicMock(data=data))
-    ]
+    response.parts = [MagicMock(inline_data=MagicMock(data=data))]
     return response
 
 

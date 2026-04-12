@@ -82,6 +82,5 @@ def test_get_top_headlines_raises_for_non_200_response() -> None:
 
     # Assert
     assert (
-        str(error.value)
-        == "Error fetching top headlines: 429 - rate limited"
+        str(error.value) == "Error fetching top headlines: 429 - rate limited"
     )

@@ -45,4 +45,6 @@ class WeatherSnapshot:
     showers: float  # mm/h
     snowfall: float  # cm/h
     cloud_cover: float  # %
+    sunrise: datetime
+    sunset: datetime
     timestamp: datetime

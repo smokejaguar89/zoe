@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.scheduler.scheduler import Scheduler
@@ -44,17 +45,69 @@ def test_start_adds_job_and_starts_scheduler(
     scheduler_service.start()
 
     # Assert
-    assert add_job.call_count == 2
+    assert add_job.call_count == 3
     first_args, first_kwargs = add_job.call_args_list[0]
     assert first_args[0] == scheduler_service._run_collect_data_job
     assert first_args[1] == "interval"
     assert first_kwargs["minutes"] == 15
+
     second_args, second_kwargs = add_job.call_args_list[1]
     assert second_args[0] == scheduler_service._run_generate_image_job
-    assert second_args[1] == "cron"
-    assert second_kwargs["hour"] == "5,12,17,22"
-    assert second_kwargs["minute"] == 0
+    assert second_args[1] == "interval"
+    assert second_kwargs["minutes"] == 1
+
+    third_args, third_kwargs = add_job.call_args_list[2]
+    assert third_args[0] == scheduler_service._run_generate_image_job
+    assert third_args[1] == "cron"
+    assert third_kwargs["hour"] == "5,12,17,22"
+    assert third_kwargs["minute"] == 0
     start.assert_called_once()
+
+
+@patch("app.scheduler.scheduler.scheduler.add_job")
+def test_run_generate_image_job_schedules_retry_on_failure(add_job) -> None:
+    # Arrange
+    image_generation_service = MagicMock()
+    image_generation_service.generate_and_save_image = AsyncMock(
+        side_effect=Exception("boom")
+    )
+    scheduler_service = Scheduler(
+        sensor_service=MagicMock(),
+        database=MagicMock(),
+        image_generation_service=image_generation_service,
+    )
+
+    # Act
+    scheduler_service._run_generate_image_job()
+
+    # Assert
+    add_job.assert_called_once()
+    args, kwargs = add_job.call_args
+    assert args[0] == scheduler_service._run_generate_image_job
+    assert args[1] == "date"
+    assert isinstance(kwargs["run_date"], datetime)
+    assert kwargs["id"] == "generate_image_retry"
+    assert kwargs["replace_existing"] is True
+
+
+@patch("app.scheduler.scheduler.scheduler.add_job")
+def test_run_generate_image_job_does_not_schedule_retry_on_success(
+    add_job,
+) -> None:
+    # Arrange
+    image_generation_service = MagicMock()
+    image_generation_service.generate_and_save_image = AsyncMock()
+    scheduler_service = Scheduler(
+        sensor_service=MagicMock(),
+        database=MagicMock(),
+        image_generation_service=image_generation_service,
+    )
+
+    # Act
+    scheduler_service._run_generate_image_job()
+
+    # Assert
+    add_job.assert_not_called()
 
 
 @patch("app.scheduler.scheduler.scheduler.shutdown")
