@@ -4,7 +4,7 @@ import os
 from enum import Enum
 
 
-class ApiException(Exception):
+class NewsApiClientError(Exception):
     pass
 
 
@@ -22,7 +22,7 @@ class NewsApiClient:
     def __init__(self, api_key: str = None):
         self.api_key = api_key or os.getenv("NEWS_API_KEY")
         if not self.api_key:
-            raise ApiException("NEWS_API_KEY is not configured.")
+            raise NewsApiClientError("NEWS_API_KEY is not configured.")
 
     def get_top_headlines(
         self, category: NewsCategory = NewsCategory.GENERAL
@@ -39,7 +39,7 @@ class NewsApiClient:
                 for article in response.json().get("articles", [])
             ]
         else:
-            raise ApiException(
+            raise NewsApiClientError(
                 f"Error fetching top headlines: {response.status_code} - "
                 f"{response.text}"
             )

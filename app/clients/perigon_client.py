@@ -5,7 +5,7 @@ from perigon import ApiClient, V1Api
 import requests
 
 
-class ApiException(Exception):
+class PerigonClientError(Exception):
     pass
 
 

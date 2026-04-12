@@ -5,7 +5,7 @@ import requests
 
 from app.clients.open_meteo_client import (
     OpenMeteoClient,
-    OpenMeteoClientException,
+    OpenMeteoClientError,
 )
 from app.models.domain.weather_snapshot import WeatherCode
 
@@ -75,7 +75,7 @@ def test_get_current_weather_zurich_raises_for_non_200_response() -> None:
             "app.clients.open_meteo_client.requests.get",
             return_value=mock_response,
         ),
-        pytest.raises(OpenMeteoClientException) as error,
+        pytest.raises(OpenMeteoClientError) as error,
     ):
         client.get_current_weather_zurich()
 
@@ -93,7 +93,7 @@ def test_get_current_weather_zurich_raises_for_request_exception() -> None:
             "app.clients.open_meteo_client.requests.get",
             side_effect=requests.RequestException("network down"),
         ),
-        pytest.raises(OpenMeteoClientException) as error,
+        pytest.raises(OpenMeteoClientError) as error,
     ):
         client.get_current_weather_zurich()
 

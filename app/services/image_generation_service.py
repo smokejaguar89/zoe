@@ -22,7 +22,7 @@ from app.services.sensor_service import (
 logger = logging.getLogger(__name__)
 
 
-class ImageClientException(Exception):
+class ImageGenerationServiceError(Exception):
     pass
 
 
@@ -124,7 +124,7 @@ class ImageGenerationService:
         stories = self.news_api_client.get_top_headlines(category=category)
         if stories:
             return stories[0]
-        raise ImageClientException(
+        raise ImageGenerationServiceError(
             "No news stories available to include in prompt."
         )
 

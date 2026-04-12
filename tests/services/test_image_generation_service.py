@@ -6,7 +6,7 @@ import pytest
 
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.image_generation_service import (
-    ImageClientException,
+    ImageGenerationServiceError,
     ImageGenerationService,
 )
 
@@ -381,7 +381,7 @@ def test_craft_image_prompt_handles_empty_stories(
     mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
     # Act / Assert
     with pytest.raises(
-        ImageClientException,
+        ImageGenerationServiceError,
         match="No news stories available to include in prompt.",
     ):
         service._craft_image_prompt(snapshot)

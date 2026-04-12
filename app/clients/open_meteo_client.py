@@ -2,7 +2,7 @@ from app.models.domain.weather_snapshot import WeatherSnapshot, WeatherCode
 import requests
 
 
-class OpenMeteoClientException(Exception):
+class OpenMeteoClientError(Exception):
     pass
 
 
@@ -36,10 +36,10 @@ class OpenMeteoClient:
                 },
             )
         except requests.RequestException as e:
-            raise OpenMeteoClientException(f"Error fetching weather data: {e}")
+            raise OpenMeteoClientError(f"Error fetching weather data: {e}")
 
         if response.status_code != 200:
-            raise OpenMeteoClientException(
+            raise OpenMeteoClientError(
                 f"Error fetching weather data: {response.status_code}"
             )
 
