@@ -57,7 +57,9 @@ async def load_homepage(
     for index, snapshot in enumerate(snapshots):
         timestamp = getattr(snapshot, "timestamp", None)
         time_label = (
-            timestamp.strftime("%H:%M") if timestamp else str(index + 1)
+            timestamp.strftime("%Y-%m-%d %H:%M")
+            if timestamp
+            else str(index + 1)
         )
         time_series.append(
             {

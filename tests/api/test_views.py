@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.api.views import load_homepage
@@ -139,3 +140,80 @@ def test_load_homepage_handles_missing_gemini_image(mock_templates) -> None:
             "generated_image_snapshot": None,
         },
     )
+
+
+@patch("app.api.views.templates")
+def test_load_homepage_includes_date_and_time_in_time_series(
+    mock_templates,
+) -> None:
+    # Arrange
+    request = MagicMock()
+    sensor_service = MagicMock(spec=SensorService)
+    sensor_service.get_snapshot = AsyncMock(
+        return_value=SensorSnapshot(
+            temperature=22.0,
+            humidity=40.0,
+            light=300.0,
+            moisture=0.5,
+            pressure=1005.0,
+        )
+    )
+    snapshots = [
+        SensorSnapshot(
+            temperature=21.0,
+            humidity=41.0,
+            light=250.0,
+            moisture=0.45,
+            pressure=1004.0,
+            timestamp=datetime(2026, 4, 10, 8, 30),
+        ),
+        SensorSnapshot(
+            temperature=20.5,
+            humidity=42.0,
+            light=240.0,
+            moisture=0.44,
+            pressure=1003.5,
+            timestamp=datetime(2026, 4, 11, 9, 45),
+        ),
+    ]
+    analytics_service = MagicMock(spec=AnalyticsService)
+    analytics_service.get_last_week_snapshots = AsyncMock(
+        return_value=snapshots
+    )
+    image_generation_service = MagicMock(spec=ImageGenerationService)
+    image_generation_service.get_latest_generated_image = AsyncMock(
+        return_value=None
+    )
+    mock_templates.TemplateResponse.return_value = "rendered-page"
+
+    # Act
+    response = asyncio.run(
+        load_homepage(
+            request=request,
+            sensor_service=sensor_service,
+            analytics_service=analytics_service,
+            image_generation_service=image_generation_service,
+        )
+    )
+
+    # Assert
+    assert response == "rendered-page"
+    template_kwargs = mock_templates.TemplateResponse.call_args.kwargs
+    assert template_kwargs["context"]["time_series"] == [
+        {
+            "time": "2026-04-10 08:30",
+            "light": 250.0,
+            "temp": 21.0,
+            "moisture": 0.45,
+            "humidity": 41.0,
+            "pressure": 1004.0,
+        },
+        {
+            "time": "2026-04-11 09:45",
+            "light": 240.0,
+            "temp": 20.5,
+            "moisture": 0.44,
+            "humidity": 42.0,
+            "pressure": 1003.5,
+        },
+    ]
