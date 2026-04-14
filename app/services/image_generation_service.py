@@ -153,6 +153,16 @@ class _ImagePromptBuilder:
 
 
 class ImageGenerationService:
+    BASE_IMAGE_PATH = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "img"
+        / "sunflower_window_base.jpeg"
+    )
+    GENERATED_IMAGE_DIR = (
+        Path(__file__).resolve().parents[1] / "static" / "img" / "gemini"
+    )
+
     def __init__(
         self,
         sensor_service: SensorService,
@@ -166,22 +176,31 @@ class ImageGenerationService:
         self.database = database
         self.news_api_client = news_api_client
         self.open_meteo_client = open_meteo_client
-        self.base_image_path = (
-            Path(__file__).resolve().parents[1]
-            / "static"
-            / "img"
-            / "sunflower_window_base.jpeg"
-        )
-        self.generated_image_dir = (
-            Path(__file__).resolve().parents[1] / "static" / "img" / "gemini"
-        )
+        self.base_image_path = self.BASE_IMAGE_PATH
+        self.generated_image_dir = self.GENERATED_IMAGE_DIR
         self._prompt_builder = _ImagePromptBuilder()
 
     async def generate_and_save_image(self) -> Path:
-        snapshot = await self.sensor_service.get_snapshot()
-        output_path, generated_at, prompt = await self._generate_image(
-            snapshot
+        snapshot, weather, top_story = await asyncio.gather(
+            self.sensor_service.get_snapshot(),
+            self.open_meteo_client.get_current_weather_zurich(),
+            self._get_news_headline(),
         )
+        prompt = self._prompt_builder.build(
+            now=datetime.now(),
+            context=_PromptContext(
+                snapshot=snapshot,
+                weather=weather,
+                top_story=top_story,
+            ),
+        )
+        base_image_bytes = self.base_image_path.read_bytes()
+        image_bytes = await self.image_client.generate_image(
+            prompt=prompt,
+            base_image_bytes=base_image_bytes,
+        )
+        generated_at = datetime.now()
+        output_path = self._write_generated_image(image_bytes, generated_at)
         await self.database.save_generated_image(
             filename=output_path.name,
             prompt=prompt,
@@ -190,43 +209,8 @@ class ImageGenerationService:
         )
         return output_path
 
-    async def _generate_image(
-        self, snapshot: SensorSnapshot
-    ) -> tuple[Path, datetime, str]:
-        prompt = await self._craft_image_prompt(snapshot)
-        logger.info("Crafted image prompt: %s", prompt)
-        base_image_bytes = self.base_image_path.read_bytes()
-        image_bytes = await self.image_client.generate_image(
-            prompt=prompt,
-            base_image_bytes=base_image_bytes,
-        )
-        generated_at = datetime.now()
-        output_path = self._write_generated_image(image_bytes, generated_at)
-        return output_path, generated_at, prompt
-
     async def get_latest_generated_image(self) -> Optional[GeneratedImage]:
         return await self.database.get_latest_generated_image()
-
-    async def _craft_image_prompt(self, snapshot: SensorSnapshot) -> str:
-        context = await self._collect_prompt_context(snapshot)
-        return self._prompt_builder.build(
-            now=datetime.now(),
-            context=context,
-        )
-
-    async def _collect_prompt_context(
-        self,
-        snapshot: SensorSnapshot,
-    ) -> _PromptContext:
-        weather, top_story = await asyncio.gather(
-            self._get_weather_snapshot(),
-            self._get_news_headline(),
-        )
-        return _PromptContext(
-            snapshot=snapshot,
-            weather=weather,
-            top_story=top_story,
-        )
 
     async def _get_news_headline(self) -> str:
         category = random.choice([NewsCategory.SCIENCE, NewsCategory.GENERAL])
@@ -238,9 +222,6 @@ class ImageGenerationService:
         raise ImageGenerationServiceError(
             "No news stories available to include in prompt."
         )
-
-    async def _get_weather_snapshot(self) -> WeatherSnapshot:
-        return await self.open_meteo_client.get_current_weather_zurich()
 
     def _write_generated_image(
         self,
