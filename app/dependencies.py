@@ -9,7 +9,7 @@ from app.clients.open_meteo_client import OpenMeteoClient
 from app.db.database import Database
 from app.hardware.fake_drivers import (
     FakeBME280Driver,
-    FakeLockedI2CBus,
+    FakeI2CDriver,
     FakeSoilMoistureDriver,
     FakeTSL2591Driver,
 )
@@ -29,13 +29,13 @@ def is_test_mode() -> bool:
 
 
 if is_test_mode():
-    LockedI2CBus = FakeLockedI2CBus
+    I2CDriver = FakeI2CDriver
     BME280Driver = FakeBME280Driver
     TSL2591Driver = FakeTSL2591Driver
     SoilMoistureDriver = FakeSoilMoistureDriver
 else:
     from app.hardware.bme280_driver import BME280Driver
-    from app.hardware.locked_i2c_bus import LockedI2CBus
+    from app.hardware.i2c_driver import I2CDriver
     from app.hardware.soil_moisture_driver import SoilMoistureDriver
     from app.hardware.tsl2591_driver import TSL2591Driver
 
@@ -48,19 +48,19 @@ def get_database() -> Database:
 @lru_cache
 def get_i2c_bus():
     # This is the important shared singleton for I2C-based sensors.
-    # Multiple driver instances are fine as long as they all use this
-    # same bus wrapper, because it owns the shared lock.
-    return LockedI2CBus()
+    # Multiple driver instances may be created, but they all share the same
+    # dedicated I2C-thread manager.
+    return I2CDriver()
 
 
 # I2C drivers are plain factories: they do not need to be singletons now
 # that concurrency safety is enforced by the shared LockedI2CBus.
 def get_bme280_driver():
-    return BME280Driver(i2c_bus=get_i2c_bus())
+    return BME280Driver(ic2_driver=get_i2c_bus())
 
 
 def get_tsl2591_driver():
-    return TSL2591Driver(i2c_bus=get_i2c_bus())
+    return TSL2591Driver(ic2_driver=get_i2c_bus())
 
 
 @lru_cache

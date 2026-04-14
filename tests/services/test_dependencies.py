@@ -4,7 +4,7 @@ from unittest.mock import patch, sentinel
 from app import dependencies
 from app.hardware.fake_drivers import (
     FakeBME280Driver,
-    FakeLockedI2CBus,
+    FakeI2CDriver,
     FakeSoilMoistureDriver,
     FakeTSL2591Driver,
 )
@@ -26,7 +26,7 @@ def test_dependency_providers_use_fake_drivers_in_test_mode(monkeypatch):
     soil_moisture = reloaded_dependencies.get_soil_moisture_driver()
 
     # Assert
-    assert isinstance(i2c_bus, FakeLockedI2CBus)
+    assert isinstance(i2c_bus, FakeI2CDriver)
     assert isinstance(bme280, FakeBME280Driver)
     assert isinstance(tsl2591, FakeTSL2591Driver)
     assert isinstance(soil_moisture, FakeSoilMoistureDriver)
@@ -39,7 +39,7 @@ def test_i2c_driver_providers_share_one_i2c_bus(monkeypatch):
 
     with (
         patch(
-            "app.hardware.locked_i2c_bus.board.I2C",
+            "app.hardware.i2c_driver.board.I2C",
             return_value=object(),
         ),
         patch.object(
@@ -51,15 +51,15 @@ def test_i2c_driver_providers_share_one_i2c_bus(monkeypatch):
             "TSL2591Driver",
         ) as mock_tsl2591_driver,
     ):
-        mock_bme280_driver.side_effect = lambda i2c_bus: type(
+        mock_bme280_driver.side_effect = lambda ic2_driver: type(
             "StubBME280Driver",
             (),
-            {"_i2c_bus": i2c_bus},
+            {"_ic2_driver": ic2_driver},
         )()
-        mock_tsl2591_driver.side_effect = lambda i2c_bus: type(
+        mock_tsl2591_driver.side_effect = lambda ic2_driver: type(
             "StubTSL2591Driver",
             (),
-            {"_i2c_bus": i2c_bus},
+            {"_ic2_driver": ic2_driver},
         )()
 
         # Act
@@ -67,7 +67,7 @@ def test_i2c_driver_providers_share_one_i2c_bus(monkeypatch):
         tsl2591 = reloaded_dependencies.get_tsl2591_driver()
 
         # Assert
-        assert bme280._i2c_bus is tsl2591._i2c_bus
+        assert bme280._ic2_driver is tsl2591._ic2_driver
 
 
 def test_soil_moisture_driver_provider_is_singleton(

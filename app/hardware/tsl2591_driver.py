@@ -1,20 +1,12 @@
-import adafruit_tsl2591
-
-from app.hardware.driver_protocols import LockedI2CBusDriver
-from app.hardware.locked_i2c_bus import LockedI2CBus
+from app.hardware.driver_protocols import HardwareDriverProtocol
+from app.hardware.i2c_driver import I2CDriver
 from app.models.domain.tsl2591_reading import TSL2591Reading
 
 
-class TSL2591Driver(LockedI2CBusDriver[TSL2591Reading]):
-    # Multiple driver instances are safe as long as they all share the
-    # same LockedI2CBus. The shared bus wrapper is what serializes I2C
-    # access; DI singleton usage here is mainly for consistency.
-    def __init__(self, i2c_bus: LockedI2CBus):
-        self._i2c_bus = i2c_bus
-        self.tsl2591 = adafruit_tsl2591.TSL2591(i2c_bus.raw_bus)
+class TSL2591Driver(HardwareDriverProtocol[TSL2591Reading]):
+    # The shared I2C driver serializes access and owns the underlying sensor.
+    def __init__(self, ic2_driver: I2CDriver):
+        self.ic2_driver = ic2_driver
 
     def get_reading(self) -> TSL2591Reading:
-        def _read() -> TSL2591Reading:
-            return TSL2591Reading(luminous_flux=self.tsl2591.lux)
-
-        return self._i2c_bus.run(_read)
+        return self.ic2_driver.get_tsl2591_reading()
