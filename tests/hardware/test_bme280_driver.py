@@ -1,4 +1,5 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
+import asyncio
 
 from app.hardware.bme280_driver import BME280Driver
 from app.models.domain.bme280_reading import BME280Reading
@@ -12,11 +13,12 @@ def test_get_reading_delegates_to_ic2_driver() -> None:
         barometric_pressure_hpa=1001.3,
     )
     mock_ic2_driver = MagicMock()
-    mock_ic2_driver.get_bme280_reading.return_value = expected_reading
+    mock_ic2_driver.get_bme280_reading = AsyncMock(
+        return_value=expected_reading)
     sensor = BME280Driver(ic2_driver=mock_ic2_driver)
 
     # Act
-    reading = sensor.get_reading()
+    reading = asyncio.run(sensor.get_reading())
 
     # Assert
     assert reading is expected_reading

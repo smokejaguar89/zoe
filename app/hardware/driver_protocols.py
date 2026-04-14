@@ -6,7 +6,7 @@ ReadingT = TypeVar("ReadingT")
 
 
 class ReadingDriver(Protocol[ReadingT]):
-    def get_reading(self) -> ReadingT: ...
+    async def get_reading(self) -> ReadingT: ...
 
 
 class HardwareDriverProtocol(ReadingDriver[ReadingT], Protocol[ReadingT]):

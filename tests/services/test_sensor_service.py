@@ -10,13 +10,16 @@ from app.services.sensor_service import SensorService
 def test_get_sensor_data_maps_sensor_readings() -> None:
     # Arrange
     bme280 = MagicMock()
-    bme280.get_reading.return_value = BME280Reading(
-        ambient_temp_celsius=23.0,
-        relative_humidity_pct=41.5,
-        barometric_pressure_hpa=1002.4,
+    bme280.get_reading = AsyncMock(
+        return_value=BME280Reading(
+            ambient_temp_celsius=23.0,
+            relative_humidity_pct=41.5,
+            barometric_pressure_hpa=1002.4,
+        )
     )
     tsl2591 = MagicMock()
-    tsl2591.get_reading.return_value = TSL2591Reading(luminous_flux=312.1)
+    tsl2591.get_reading = AsyncMock(
+        return_value=TSL2591Reading(luminous_flux=312.1))
     soil_moisture = MagicMock()
     soil_moisture.get_reading = AsyncMock(
         return_value=SparkfunReading(
@@ -39,4 +42,5 @@ def test_get_sensor_data_maps_sensor_readings() -> None:
     assert sensor_data.light == 312.1
     assert sensor_data.moisture == 17.6
     assert bme280.get_reading.call_count == 1
+    assert tsl2591.get_reading.call_count == 1
     soil_moisture.get_reading.assert_awaited_once()

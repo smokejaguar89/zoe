@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import asyncio
 import board
 from adafruit_bme280 import basic as adafruit_bme280
 import adafruit_tsl2591
@@ -32,7 +33,11 @@ class I2CDriver:
         # Initialize the I2C bus and sensors on the dedicated I2C thread.
         self._executor.submit(_init_sensors).result()
 
-    def get_bme280_reading(self) -> BME280Reading:
+    async def get_bme280_reading(self) -> BME280Reading:
+        """
+        Read BME280 sensor values asynchronously.
+        Executes on dedicated I2C thread to serialize hardware access.
+        """
         def _read():
             # This inner function executes ONLY on the dedicated I2C thread
             return BME280Reading(
@@ -41,14 +46,20 @@ class I2CDriver:
                 barometric_pressure_hpa=self._bme280.pressure,
             )
 
-        # Submit the task to the dedicated thread and block until it returns
-        return self._executor.submit(_read).result()
+        # Submit to dedicated thread without blocking event loop
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, _read)
 
-    def get_tsl2591_reading(self) -> TSL2591Reading:
+    async def get_tsl2591_reading(self) -> TSL2591Reading:
+        """
+        Read TSL2591 sensor values asynchronously.
+        Executes on dedicated I2C thread to serialize hardware access.
+        """
         def _read():
             return TSL2591Reading(luminous_flux=self._tsl2591.lux)
 
-        return self._executor.submit(_read).result()
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, _read)
 
     def shutdown(self):
         self._executor.shutdown(wait=True)

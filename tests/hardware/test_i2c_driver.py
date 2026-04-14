@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+import asyncio
 
 import pytest
 
@@ -67,7 +68,7 @@ def test_get_bme280_reading_returns_correct_type():
     """Test that get_bme280_reading returns BME280Reading with correct values."""
     driver, mock_bme_sensor, _ = load_i2c_driver_module()
 
-    reading = driver.get_bme280_reading()
+    reading = asyncio.run(driver.get_bme280_reading())
 
     assert isinstance(reading, BME280Reading)
     assert reading.ambient_temp_celsius == 21.5
@@ -80,7 +81,7 @@ def test_get_tsl2591_reading_returns_correct_type():
     """Test that get_tsl2591_reading returns TSL2591Reading with correct values."""
     driver, _, mock_tsl_sensor = load_i2c_driver_module()
 
-    reading = driver.get_tsl2591_reading()
+    reading = asyncio.run(driver.get_tsl2591_reading())
 
     assert isinstance(reading, TSL2591Reading)
     assert reading.luminous_flux == 250.5
@@ -91,8 +92,8 @@ def test_raw_bus_property_accessible():
     """Test that get_bme280_reading and get_tsl2591_reading work correctly."""
     driver, _, _ = load_i2c_driver_module()
 
-    bme_reading = driver.get_bme280_reading()
-    tsl_reading = driver.get_tsl2591_reading()
+    bme_reading = asyncio.run(driver.get_bme280_reading())
+    tsl_reading = asyncio.run(driver.get_tsl2591_reading())
 
     assert isinstance(bme_reading, BME280Reading)
     assert isinstance(tsl_reading, TSL2591Reading)
@@ -121,8 +122,8 @@ def test_multiple_readings_work_independently():
 
     # Read both sensors multiple times
     for i in range(3):
-        bme_reading = driver.get_bme280_reading()
-        tsl_reading = driver.get_tsl2591_reading()
+        bme_reading = asyncio.run(driver.get_bme280_reading())
+        tsl_reading = asyncio.run(driver.get_tsl2591_reading())
 
         assert isinstance(bme_reading, BME280Reading)
         assert isinstance(tsl_reading, TSL2591Reading)

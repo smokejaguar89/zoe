@@ -8,5 +8,5 @@ class TSL2591Driver(HardwareDriverProtocol[TSL2591Reading]):
     def __init__(self, ic2_driver: I2CDriver):
         self.ic2_driver = ic2_driver
 
-    def get_reading(self) -> TSL2591Reading:
-        return self.ic2_driver.get_tsl2591_reading()
+    async def get_reading(self) -> TSL2591Reading:
+        return await self.ic2_driver.get_tsl2591_reading()

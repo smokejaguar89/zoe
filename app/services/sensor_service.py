@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import asyncio
 from app.models.domain.sensor_snapshot import SensorSnapshot
 
 # Soil hydration is normalized to [0.0, 1.0]
@@ -20,9 +21,11 @@ class SensorService:
         self.soil_moisture = soil_moisture
 
     async def get_snapshot(self) -> SensorSnapshot:
-        bme280Reading = self.bme280.get_reading()
-        tsl2591Reading = self.tsl2591.get_reading()
-        soilMoistureReading = await self.soil_moisture.get_reading()
+        bme280Reading, tsl2591Reading, soilMoistureReading = await asyncio.gather(
+            self.bme280.get_reading(),
+            self.tsl2591.get_reading(),
+            self.soil_moisture.get_reading(),
+        )
 
         return SensorSnapshot(
             temperature=bme280Reading.ambient_temp_celsius,

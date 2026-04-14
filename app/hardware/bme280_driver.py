@@ -7,5 +7,5 @@ class BME280Driver(HardwareDriverProtocol[BME280Reading]):
     def __init__(self, ic2_driver: I2CDriver):
         self.ic2_driver = ic2_driver
 
-    def get_reading(self) -> BME280Reading:
-        return self.ic2_driver.get_bme280_reading()
+    async def get_reading(self) -> BME280Reading:
+        return await self.ic2_driver.get_bme280_reading()
