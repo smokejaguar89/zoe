@@ -10,7 +10,7 @@ from app.dependencies import (
     get_sensor_service,
 )
 from app.models.domain.sensor_snapshot import SensorSnapshot
-from app.services.analytics_service import AnalyticsService
+from app.services.analytics_service import AnalyticsService, TimeGroup
 from app.services.image_generation_service import ImageGenerationService
 from app.services.sensor_service import (
     LIGHT_LOW_LUX_THRESHOLD,
@@ -52,7 +52,7 @@ async def load_homepage(
     sensor_snapshot = await sensor_service.get_snapshot()
     snapshots: List[
         SensorSnapshot
-    ] = await analytics_service.get_last_week_snapshots()
+    ] = await analytics_service.get_last_week_snapshots(TimeGroup.HOUR)
     time_series = []
     for index, snapshot in enumerate(snapshots):
         timestamp = getattr(snapshot, "timestamp", None)
