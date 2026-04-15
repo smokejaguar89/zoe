@@ -29,6 +29,8 @@ class GeminiClient:
         if not self.api_key:
             raise GeminiClientError("GEMINI_API_KEY is not configured.")
 
+        logging.info("Generating image with prompt:" + prompt)
+
         client = genai.Client(api_key=self.api_key)
         last_error: Exception | None = None
 
