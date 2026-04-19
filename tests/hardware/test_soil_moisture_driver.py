@@ -2,7 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 from app.hardware.soil_moisture_driver import SoilMoistureDriver
-from app.models.domain.sparkfun_reading import SparkfunReading
+from app.models.domain.soil_moisture_reading import SoilMoistureReading
 
 
 @patch(
@@ -24,7 +24,7 @@ def test_get_reading_powers_sensor_and_maps_adc_value(
     reading = asyncio.run(sensor.get_reading())
 
     # Assert
-    assert isinstance(reading, SparkfunReading)
+    assert isinstance(reading, SoilMoistureReading)
     assert reading.soil_hydration == 0.73
     mock_mcp3008.assert_called_once_with(channel=0)
     mock_power_device.assert_called_once_with(18)

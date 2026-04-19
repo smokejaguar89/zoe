@@ -56,11 +56,11 @@ def get_i2c_bus():
 # I2C drivers are plain factories: they do not need to be singletons now
 # that concurrency safety is enforced by the shared LockedI2CBus.
 def get_bme280_driver():
-    return BME280Driver(ic2_driver=get_i2c_bus())
+    return BME280Driver(i2c_driver=get_i2c_bus())
 
 
 def get_tsl2591_driver():
-    return TSL2591Driver(ic2_driver=get_i2c_bus())
+    return TSL2591Driver(i2c_driver=get_i2c_bus())
 
 
 @lru_cache

@@ -6,7 +6,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.models.db.generated_image_entity import GeneratedImageEntity
 from app.models.db.sensor_snapshot_entity import SensorSnapshotEntity
-from app.models.domain.generated_image import GeneratedImage
+from app.models.domain.generated_image import GeneratedImageMetadata
 from app.models.domain.sensor_snapshot import SensorSnapshot
 
 logger = logging.getLogger(__name__)
@@ -45,25 +45,29 @@ class Database:
             session.add(SensorSnapshotEntity.from_sensor_snapshot(snapshot))
             session.commit()
 
-    async def save_generated_image(
+    async def save_generated_image_metadata(
         self,
         filename: str,
         prompt: str,
         generated_at: datetime,
         snapshot: SensorSnapshot,
     ):
+        metadata = GeneratedImageMetadata(
+            filename=filename,
+            prompt=prompt,
+            generated_at=generated_at,
+            sensor_snapshot=snapshot,
+        )
         with Session(self.engine) as session:
             session.add(
-                GeneratedImageEntity.from_generated_image(
-                    filename=filename,
-                    prompt=prompt,
-                    generated_at=generated_at,
-                    snapshot=snapshot,
-                )
+                GeneratedImageEntity.from_generated_image_metadata(metadata)
             )
             session.commit()
 
-    async def get_latest_generated_image(self) -> GeneratedImage:
+    async def get_latest_generated_image_metadata(
+        self,
+    ) -> GeneratedImageMetadata:
+
         with Session(self.engine) as session:
             statement = select(GeneratedImageEntity).order_by(
                 GeneratedImageEntity.generated_at.desc()
@@ -72,7 +76,7 @@ class Database:
             if result is None:
                 raise EntityNotFoundError("No generated image found.")
 
-            return result.to_generated_image()
+            return result.to_generated_image_metadata()
 
     async def get_snapshots_between(
         self, start_time: datetime, end_time: datetime

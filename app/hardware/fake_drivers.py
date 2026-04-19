@@ -4,7 +4,7 @@ from _thread import LockType
 from typing import Callable, TypeVar
 
 from app.models.domain.bme280_reading import BME280Reading
-from app.models.domain.sparkfun_reading import SparkfunReading
+from app.models.domain.soil_moisture_reading import SoilMoistureReading
 from app.models.domain.tsl2591_reading import TSL2591Reading
 
 T = TypeVar("T")
@@ -36,8 +36,8 @@ class FakeI2CDriver:
 
 
 class FakeBME280Driver:
-    def __init__(self, ic2_driver=None):
-        self._ic2_driver = ic2_driver
+    def __init__(self, i2c_driver=None):
+        self._i2c_driver = i2c_driver
 
     def get_reading(self) -> BME280Reading:
         return BME280Reading(
@@ -48,13 +48,13 @@ class FakeBME280Driver:
 
 
 class FakeTSL2591Driver:
-    def __init__(self, ic2_driver=None):
-        self._ic2_driver = ic2_driver
+    def __init__(self, i2c_driver=None):
+        self._i2c_driver = i2c_driver
 
     def get_reading(self) -> TSL2591Reading:
         return TSL2591Reading(luminous_flux=random.uniform(1.0, 300.0))
 
 
 class FakeSoilMoistureDriver:
-    async def get_reading(self) -> SparkfunReading:
-        return SparkfunReading(soil_hydration=random.uniform(0.1, 0.9))
+    async def get_reading(self) -> SoilMoistureReading:
+        return SoilMoistureReading(soil_hydration=random.uniform(0.1, 0.9))

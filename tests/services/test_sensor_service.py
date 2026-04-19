@@ -2,7 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 from app.models.domain.bme280_reading import BME280Reading
-from app.models.domain.sparkfun_reading import SparkfunReading
+from app.models.domain.soil_moisture_reading import SoilMoistureReading
 from app.models.domain.tsl2591_reading import TSL2591Reading
 from app.services.sensor_service import SensorService
 
@@ -23,7 +23,7 @@ def test_get_sensor_data_maps_sensor_readings() -> None:
     )
     soil_moisture = MagicMock()
     soil_moisture.get_reading = AsyncMock(
-        return_value=SparkfunReading(
+        return_value=SoilMoistureReading(
             soil_hydration=17.6,
         )
     )

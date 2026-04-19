@@ -58,7 +58,7 @@ def test_save_generated_image_adds_and_commits_record(session_cls) -> None:
 
     # Act
     asyncio.run(
-        db.save_generated_image(
+        db.save_generated_image_metadata(
             filename="sunflower_2026-04-03:13:39.jpg",
             prompt="A prompt",
             generated_at=datetime(2026, 4, 3, 13, 39),
@@ -92,7 +92,7 @@ def test_get_latest_generated_image_returns_record(session_cls) -> None:
     session_cls.return_value.__enter__.return_value = session
 
     # Act
-    generated_image = asyncio.run(db.get_latest_generated_image())
+    generated_image = asyncio.run(db.get_latest_generated_image_metadata())
 
     # Assert
     assert generated_image is not None

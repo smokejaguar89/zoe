@@ -1,6 +1,10 @@
 from datetime import datetime, timezone
 import asyncio
+from app.hardware.driver_protocols import HardwareDriverProtocol
+from app.models.domain.bme280_reading import BME280Reading
 from app.models.domain.sensor_snapshot import SensorSnapshot
+from app.models.domain.tsl2591_reading import TSL2591Reading
+from app.models.domain.soil_moisture_reading import SoilMoistureReading
 
 # Soil hydration is normalized to [0.0, 1.0]
 MOISTURE_THRESHOLD = 0.35
@@ -15,7 +19,11 @@ TEMPERATURE_COMFORT_C_UPPER_THRESHOLD = 27.0
 
 
 class SensorService:
-    def __init__(self, bme280, tsl2591, soil_moisture):
+    def __init__(
+            self,
+            bme280: HardwareDriverProtocol[BME280Reading],
+            tsl2591: HardwareDriverProtocol[TSL2591Reading],
+            soil_moisture: HardwareDriverProtocol[SoilMoistureReading]):
         self.bme280 = bme280
         self.tsl2591 = tsl2591
         self.soil_moisture = soil_moisture

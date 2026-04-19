@@ -2,7 +2,7 @@ import asyncio
 
 from gpiozero import MCP3008, DigitalOutputDevice
 
-from app.models.domain.sparkfun_reading import SparkfunReading
+from app.models.domain.soil_moisture_reading import SoilMoistureReading
 
 
 class SoilMoistureDriver:
@@ -17,12 +17,13 @@ class SoilMoistureDriver:
         # Serialize reads so sensor power transitions cannot interleave.
         self._lock = asyncio.Lock()
 
-    async def get_reading(self) -> SparkfunReading:
+    async def get_reading(self) -> SoilMoistureReading:
         async with self._lock:
             self.sparkfun_power.on()
             try:
                 await asyncio.sleep(0.1)  # Wait for the sensor to stabilize
-                reading = SparkfunReading(soil_hydration=self.mcp3008.value)
+                reading = SoilMoistureReading(
+                    soil_hydration=self.mcp3008.value)
             finally:
                 # Power off the sensor to prevent corrosion (even if the
                 # read fails).

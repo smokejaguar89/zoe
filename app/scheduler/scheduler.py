@@ -60,7 +60,8 @@ class Scheduler:
     def start(self):
         scheduler.add_job(self._run_collect_data_job, "interval", minutes=15)
         # For testing
-        # scheduler.add_job(self._run_generate_image_job, "interval", minutes=1)
+        # scheduler.add_job(self._run_generate_image_job, "interval",
+        #                   minutes=1)
 
         IMAGE_GEN_CRON_SCHEDULE = [
             6,  # Clara awake

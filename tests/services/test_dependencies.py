@@ -51,15 +51,15 @@ def test_i2c_driver_providers_share_one_i2c_bus(monkeypatch):
             "TSL2591Driver",
         ) as mock_tsl2591_driver,
     ):
-        mock_bme280_driver.side_effect = lambda ic2_driver: type(
-            "StubBME280Driver",
+        mock_bme280_driver.side_effect = lambda i2c_driver: type(
+            "FakeBME280Driver",
             (),
-            {"_ic2_driver": ic2_driver},
+            {"_i2c_driver": i2c_driver},
         )()
-        mock_tsl2591_driver.side_effect = lambda ic2_driver: type(
-            "StubTSL2591Driver",
+        mock_tsl2591_driver.side_effect = lambda i2c_driver: type(
+            "FakeTSL2591Driver",
             (),
-            {"_ic2_driver": ic2_driver},
+            {"_i2c_driver": i2c_driver},
         )()
 
         # Act
@@ -67,7 +67,7 @@ def test_i2c_driver_providers_share_one_i2c_bus(monkeypatch):
         tsl2591 = reloaded_dependencies.get_tsl2591_driver()
 
         # Assert
-        assert bme280._ic2_driver is tsl2591._ic2_driver
+        assert bme280._i2c_driver is tsl2591._i2c_driver
 
 
 def test_soil_moisture_driver_provider_is_singleton(

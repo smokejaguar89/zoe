@@ -2,7 +2,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 import asyncio
 
-import pytest
 
 from app.hardware.i2c_driver import I2CDriver
 from app.models.domain.bme280_reading import BME280Reading
@@ -71,7 +70,8 @@ def test_constructor_with_custom_bus():
 
 
 def test_get_bme280_reading_returns_correct_type():
-    """Test that get_bme280_reading returns BME280Reading with correct values."""
+    """Test that get_bme280_reading returns BME280Reading with correct
+    values."""
     driver, mock_bme_sensor, _ = load_i2c_driver_module()
 
     reading = asyncio.run(driver.get_bme280_reading())
@@ -84,7 +84,8 @@ def test_get_bme280_reading_returns_correct_type():
 
 
 def test_get_tsl2591_reading_returns_correct_type():
-    """Test that get_tsl2591_reading returns TSL2591Reading with correct values."""
+    """Test that get_tsl2591_reading returns TSL2591Reading with correct
+    values."""
     driver, _, mock_tsl_sensor = load_i2c_driver_module()
 
     reading = asyncio.run(driver.get_tsl2591_reading())

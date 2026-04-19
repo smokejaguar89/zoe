@@ -2,5 +2,5 @@ from dataclasses import dataclass
 
 
 @dataclass
-class SparkfunReading:
+class SoilMoistureReading:
     soil_hydration: float

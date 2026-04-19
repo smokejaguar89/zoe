@@ -3,7 +3,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.api.views import load_homepage
-from app.models.domain.generated_image import GeneratedImage
+from app.models.domain.generated_image import GeneratedImageMetadata
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.analytics_service import AnalyticsService
 from app.services.image_generation_service import ImageGenerationService
@@ -41,7 +41,7 @@ def test_load_homepage_renders_template_with_sensor_data(
     )
     image_generation_service = MagicMock(spec=ImageGenerationService)
     image_generation_service.get_latest_generated_image = AsyncMock(
-        return_value=GeneratedImage(
+        return_value=GeneratedImageMetadata(
             filename="sunflower_2026-04-03:13:39.jpg",
             generated_at=image_snapshot.timestamp,
             sensor_snapshot=image_snapshot,

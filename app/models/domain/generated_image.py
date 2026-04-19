@@ -5,7 +5,7 @@ from app.models.domain.sensor_snapshot import SensorSnapshot
 
 
 @dataclass
-class GeneratedImage:
+class GeneratedImageMetadata:
     filename: str
     generated_at: datetime
     prompt: str | None = None

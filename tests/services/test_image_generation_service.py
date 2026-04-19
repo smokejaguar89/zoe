@@ -1,13 +1,10 @@
 import asyncio
 from datetime import datetime
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.image_generation_service import (
-    DayPhase,
-    ImageGenerationServiceError,
     ImageGenerationService,
 )
 
@@ -42,7 +39,9 @@ def test_get_latest_generated_image_returns_database_value() -> None:
     # Arrange
     expected = MagicMock()
     database = MagicMock()
-    database.get_latest_generated_image = AsyncMock(return_value=expected)
+    database.get_latest_generated_image_metadata = AsyncMock(
+        return_value=expected
+    )
     service = ImageGenerationService(
         sensor_service=MagicMock(),
         image_client=MagicMock(),
@@ -56,7 +55,7 @@ def test_get_latest_generated_image_returns_database_value() -> None:
 
     # Assert
     assert generated_image == expected
-    database.get_latest_generated_image.assert_awaited_once_with()
+    database.get_latest_generated_image_metadata.assert_awaited_once_with()
 
 
 @patch("app.services.image_generation_service.random.random", return_value=0.9)
@@ -78,7 +77,7 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
     image_client = MagicMock()
     image_client.generate_image = AsyncMock(return_value=b"jpg-bytes")
     database = MagicMock()
-    database.save_generated_image = AsyncMock()
+    database.save_generated_image_metadata = AsyncMock()
     news_api_client = MagicMock()
     news_api_client.get_top_headlines = AsyncMock(return_value=["Story 1"])
     service = ImageGenerationService(
@@ -144,7 +143,7 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
     image_client = MagicMock()
     image_client.generate_image = AsyncMock(return_value=b"jpg-bytes")
     database = MagicMock()
-    database.save_generated_image = AsyncMock()
+    database.save_generated_image_metadata = AsyncMock()
     news_api_client = MagicMock()
     news_api_client.get_top_headlines = AsyncMock(return_value=["Story 1"])
     service = ImageGenerationService(
@@ -194,7 +193,7 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
 def test_get_latest_generated_image_returns_none_when_database_empty() -> None:
     # Arrange
     database = MagicMock()
-    database.get_latest_generated_image = AsyncMock(return_value=None)
+    database.get_latest_generated_image_metadata = AsyncMock(return_value=None)
     service = ImageGenerationService(
         sensor_service=MagicMock(),
         image_client=MagicMock(),
@@ -208,4 +207,4 @@ def test_get_latest_generated_image_returns_none_when_database_empty() -> None:
 
     # Assert
     assert generated_image is None
-    database.get_latest_generated_image.assert_awaited_once_with()
+    database.get_latest_generated_image_metadata.assert_awaited_once_with()

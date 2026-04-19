@@ -4,13 +4,14 @@ from dataclasses import dataclass
 from datetime import datetime
 import logging
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Optional
 from enum import Enum
 
 from app.db.database import Database
+from app.clients.client_protocols import ImageClient
 from app.clients.news_api_client import NewsApiClient, NewsCategory
 from app.clients.open_meteo_client import OpenMeteoClient
-from app.models.domain.generated_image import GeneratedImage
+from app.models.domain.generated_image import GeneratedImageMetadata
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.models.domain.weather_snapshot import WeatherSnapshot
 from app.services.sensor_service import (
@@ -26,21 +27,15 @@ from app.services.sensor_service import (
 logger = logging.getLogger(__name__)
 
 
+class ImageGenerationServiceError(Exception):
+    pass
+
+
 class DayPhase(Enum):
     SUNRISE = "sunrise"
     DAY = "day"
     SUNSET = "sunset"
     NIGHT = "night"
-
-
-class ImageGenerationServiceError(Exception):
-    pass
-
-
-class ImageClient(Protocol):
-    async def generate_image(
-        self, prompt: str, base_image_bytes: bytes
-    ) -> bytes: ...
 
 
 @dataclass(frozen=True)
@@ -135,18 +130,18 @@ class _ImagePromptBuilder:
         )
         return f"Make the scene look like it's {time_of_day.value}."
 
-    def _get_time_of_day(self, sunrise: int, sunset: int) -> DayPhase:
+    def _get_time_of_day(
+        self, sunrise: datetime, sunset: datetime
+    ) -> DayPhase:
         hour = datetime.now().hour
-        sunrise = sunrise.hour
-        sunrise_end = sunrise + 2
-        sunset = sunset.hour
-        sunset_end = sunset + 2
+        sunrise_hour = sunrise.hour
+        sunset_hour = sunset.hour
 
-        if sunrise <= hour < sunrise_end:
+        if sunrise_hour <= hour < sunrise_hour + 2:
             return DayPhase.SUNRISE
-        elif sunrise_end <= hour < sunset:
+        elif sunrise_hour + 2 <= hour < sunset_hour:
             return DayPhase.DAY
-        elif sunset <= hour < sunset_end:
+        elif sunset_hour <= hour < sunset_hour + 2:
             return DayPhase.SUNSET
         else:
             return DayPhase.NIGHT
@@ -201,7 +196,7 @@ class ImageGenerationService:
         )
         generated_at = datetime.now()
         output_path = self._write_generated_image(image_bytes, generated_at)
-        await self.database.save_generated_image(
+        await self.database.save_generated_image_metadata(
             filename=output_path.name,
             prompt=prompt,
             generated_at=generated_at,
@@ -209,8 +204,11 @@ class ImageGenerationService:
         )
         return output_path
 
-    async def get_latest_generated_image(self) -> Optional[GeneratedImage]:
-        return await self.database.get_latest_generated_image()
+    async def get_latest_generated_image(
+        self,
+    ) -> Optional[GeneratedImageMetadata]:
+
+        return await self.database.get_latest_generated_image_metadata()
 
     async def _get_news_headline(self) -> str:
         category = random.choice([NewsCategory.SCIENCE, NewsCategory.GENERAL])
