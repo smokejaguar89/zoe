@@ -39,7 +39,7 @@ class FakeBME280Driver:
     def __init__(self, i2c_driver=None):
         self._i2c_driver = i2c_driver
 
-    def get_reading(self) -> BME280Reading:
+    async def get_reading(self) -> BME280Reading:
         return BME280Reading(
             ambient_temp_celsius=random.uniform(18.0, 28.0),
             relative_humidity_pct=random.uniform(35.0, 65.0),
@@ -51,7 +51,7 @@ class FakeTSL2591Driver:
     def __init__(self, i2c_driver=None):
         self._i2c_driver = i2c_driver
 
-    def get_reading(self) -> TSL2591Reading:
+    async def get_reading(self) -> TSL2591Reading:
         return TSL2591Reading(luminous_flux=random.uniform(1.0, 300.0))
 
 

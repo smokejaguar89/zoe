@@ -1,6 +1,10 @@
 from typing import Protocol, TypeVar
 
-from app.hardware.i2c_driver import I2CDriver
+try:
+    from app.hardware.i2c_driver import I2CDriver
+except NotImplementedError:
+    # Fallback to fake driver when running on non-hardware platforms (e.g., macOS)
+    from app.hardware.fake_drivers import FakeI2CDriver as I2CDriver  # type: ignore
 
 ReadingT = TypeVar("ReadingT")
 
