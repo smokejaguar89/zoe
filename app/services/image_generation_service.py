@@ -227,7 +227,7 @@ class ImageGenerationService:
         generated_at: datetime,
     ) -> Path:
         self.generated_image_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"sunflower_{self._timestamp_to_string(generated_at)}.jpg"
+        filename = f"sunflower_{self._timestamp_to_string(generated_at)}_P.jpg"
         output_path = self.generated_image_dir / filename
         output_path.write_bytes(image_bytes)
         return output_path
