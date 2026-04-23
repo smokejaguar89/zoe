@@ -72,7 +72,12 @@ async def get_time_series(
 
 
 @router.get("/images/eink_signal", response_model=GetEinkSignalResponse)
-async def get_eink_signal():
+async def get_eink_signal(success: bool):
+    if success:
+        logger.info("New image set on eInk display.")
+    else:
+        logger.warning("Failed to set new image on eInk display.")
+
     return GetEinkSignalResponse(
         status=status.HTTP_200_OK, message="Feedback recorded"
     )
