@@ -39,7 +39,9 @@ def test_load_homepage_renders_template_with_sensor_data(
         moisture=12.3,
         pressure=1004.5,
     )
-    generated_image_service = GeneratedImageService(database=MagicMock())
+    generated_image_service = GeneratedImageService(
+        image_repository=MagicMock()
+    )
     generated_image_service.get_latest_generated_image = AsyncMock(
         return_value=GeneratedImageMetadata(
             filename="sunflower_2026-04-03:13:39.jpg",

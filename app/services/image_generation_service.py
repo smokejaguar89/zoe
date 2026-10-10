@@ -5,10 +5,13 @@ import logging
 from pathlib import Path
 from PIL import Image
 
-from app.db.database import Database
+from app.db.repositories.generated_image_repository import (
+    GeneratedImageRepository,
+)
 from app.clients.client_protocols import ImageClient
 from app.clients.news_api_client import NewsApiClient, NewsCategory
 from app.clients.open_meteo_client import OpenMeteoClient
+from app.models.domain.generated_image import GeneratedImageMetadata
 from app.services.generated_image_service import (
     GENERATED_IMAGE_DIR,
     OPTIMISED_IMAGE_DIR,
@@ -35,14 +38,14 @@ class ImageGenerationService:
         self,
         sensor_service: SensorService,
         image_client: ImageClient,
-        database: Database,
+        image_repository: GeneratedImageRepository,
         news_api_client: NewsApiClient,
         open_meteo_client: OpenMeteoClient,
         prompt_builder: ImagePromptBuilder,
     ):
         self.sensor_service = sensor_service
         self.image_client = image_client
-        self.database = database
+        self.image_repository = image_repository
         self.news_api_client = news_api_client
         self.open_meteo_client = open_meteo_client
         self.prompt_builder = prompt_builder
@@ -80,11 +83,13 @@ class ImageGenerationService:
             output_path,
             self.optimised_image_dir / output_path.name,
         )
-        await self.database.save_generated_image_metadata(
-            filename=output_path.name,
-            prompt=prompt,
-            generated_at=generated_at,
-            snapshot=snapshot,
+        self.image_repository.add(
+            GeneratedImageMetadata(
+                filename=output_path.name,
+                generated_at=generated_at,
+                prompt=prompt,
+                sensor_snapshot=snapshot,
+            )
         )
         return output_path
 

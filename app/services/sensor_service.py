@@ -1,4 +1,8 @@
 import asyncio
+
+from app.db.repositories.sensor_snapshot_repository import (
+    SensorSnapshotRepository,
+)
 from app.hardware.driver_protocols import HardwareDriverProtocol
 from app.models.domain.bme280_reading import BME280Reading
 from app.models.domain.sensor_snapshot import SensorSnapshot
@@ -24,10 +28,18 @@ class SensorService:
         bme280: HardwareDriverProtocol[BME280Reading],
         tsl2591: HardwareDriverProtocol[TSL2591Reading],
         soil_moisture: HardwareDriverProtocol[SoilMoistureReading],
+        snapshot_repository: SensorSnapshotRepository,
     ):
         self.bme280 = bme280
         self.tsl2591 = tsl2591
         self.soil_moisture = soil_moisture
+        self.snapshot_repository = snapshot_repository
+
+    async def record_snapshot(self) -> SensorSnapshot:
+        """Take a snapshot and save it."""
+        snapshot = await self.get_snapshot()
+        self.snapshot_repository.add(snapshot)
+        return snapshot
 
     async def get_snapshot(self) -> SensorSnapshot:
         (

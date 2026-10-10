@@ -1,7 +1,9 @@
 from pathlib import Path
 from typing import Optional
 
-from app.db.database import Database, EntityNotFoundError
+from app.db.repositories.generated_image_repository import (
+    GeneratedImageRepository,
+)
 from app.models.domain.generated_image import GeneratedImageMetadata
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
@@ -10,16 +12,13 @@ OPTIMISED_IMAGE_DIR = STATIC_DIR / "img" / "gemini_optimised"
 
 
 class GeneratedImageService:
-    def __init__(self, database: Database):
-        self.database = database
+    def __init__(self, image_repository: GeneratedImageRepository):
+        self.image_repository = image_repository
 
     async def get_latest_generated_image(
         self,
     ) -> Optional[GeneratedImageMetadata]:
-        try:
-            return await self.database.get_latest_generated_image_metadata()
-        except EntityNotFoundError:
-            return None
+        return self.image_repository.get_latest()
 
     def generated_image_url_path(self, filename: str) -> str:
         return self._static_url_path(GENERATED_IMAGE_DIR / filename)

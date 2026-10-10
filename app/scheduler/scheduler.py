@@ -4,7 +4,6 @@ from typing import Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from app.db.database import Database
 from app.services.image_generation_service import ImageGenerationService
 from app.services.sensor_service import SensorService
 from app.utils.clock import LOCAL_TIMEZONE, to_local, utc_now
@@ -46,12 +45,10 @@ class Scheduler:
     def __init__(
         self,
         sensor_service: SensorService,
-        database: Database,
         image_generation_service: ImageGenerationService,
         scheduler: AsyncIOScheduler,
     ):
         self.sensor_service = sensor_service
-        self.database = database
         self.image_generation_service = image_generation_service
         # Jobs run on the app's event loop, alongside API requests, so every
         # hardware read happens on one loop and the drivers' asyncio locks
@@ -60,8 +57,7 @@ class Scheduler:
 
     async def _collect_data_job(self):
         logger.info("Running data collection job...")
-        snapshot = await self.sensor_service.get_snapshot()
-        await self.database.save_snapshot(snapshot)
+        await self.sensor_service.record_snapshot()
 
     async def _generate_image_job(self, attempt: int = 1):
         logger.info(

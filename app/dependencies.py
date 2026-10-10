@@ -9,6 +9,12 @@ from app.clients.gemini_client import GeminiClient
 from app.clients.news_api_client import NewsApiClient
 from app.clients.open_meteo_client import OpenMeteoClient
 from app.db.database import Database
+from app.db.repositories.generated_image_repository import (
+    GeneratedImageRepository,
+)
+from app.db.repositories.sensor_snapshot_repository import (
+    SensorSnapshotRepository,
+)
 from app.hardware.driver_protocols import HardwareDriverProtocol
 from app.hardware.fake_drivers import (
     FakeBME280Driver,
@@ -40,6 +46,14 @@ if not TEST_MODE:
 @lru_cache
 def get_database() -> Database:
     return Database()
+
+
+def get_sensor_snapshot_repository() -> SensorSnapshotRepository:
+    return SensorSnapshotRepository(engine=get_database().engine)
+
+
+def get_generated_image_repository() -> GeneratedImageRepository:
+    return GeneratedImageRepository(engine=get_database().engine)
 
 
 # Drivers are cached so each sensor chip is initialised once and shared.
@@ -79,6 +93,7 @@ def get_sensor_service() -> SensorService:
         bme280=get_bme280_driver(),
         tsl2591=get_tsl2591_driver(),
         soil_moisture=get_soil_moisture_driver(),
+        snapshot_repository=get_sensor_snapshot_repository(),
     )
 
 
@@ -102,7 +117,7 @@ def get_image_generation_service() -> ImageGenerationService:
     return ImageGenerationService(
         sensor_service=get_sensor_service(),
         image_client=get_gemini_client(),
-        database=get_database(),
+        image_repository=get_generated_image_repository(),
         news_api_client=get_news_api_client(),
         open_meteo_client=get_open_meteo_client(),
         prompt_builder=get_prompt_builder(),
@@ -110,11 +125,15 @@ def get_image_generation_service() -> ImageGenerationService:
 
 
 def get_generated_image_service() -> GeneratedImageService:
-    return GeneratedImageService(database=get_database())
+    return GeneratedImageService(
+        image_repository=get_generated_image_repository()
+    )
 
 
 def get_analytics_service() -> AnalyticsService:
-    return AnalyticsService(database=get_database())
+    return AnalyticsService(
+        snapshot_repository=get_sensor_snapshot_repository()
+    )
 
 
 def get_apscheduler() -> AsyncIOScheduler:
@@ -132,7 +151,6 @@ def get_apscheduler() -> AsyncIOScheduler:
 def get_scheduler() -> Scheduler:
     return Scheduler(
         sensor_service=get_sensor_service(),
-        database=get_database(),
         image_generation_service=get_image_generation_service(),
         scheduler=get_apscheduler(),
     )

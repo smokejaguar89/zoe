@@ -59,14 +59,13 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
     sensor_service.get_snapshot = AsyncMock(return_value=snapshot)
     image_client = MagicMock()
     image_client.generate_image = AsyncMock(return_value=b"jpg-bytes")
-    database = MagicMock()
-    database.save_generated_image_metadata = AsyncMock()
+    image_repository = MagicMock()
     news_api_client = MagicMock()
     news_api_client.get_top_headlines = AsyncMock(return_value=["Story 1"])
     service = ImageGenerationService(
         sensor_service=sensor_service,
         image_client=image_client,
-        database=database,
+        image_repository=image_repository,
         news_api_client=news_api_client,
         open_meteo_client=_make_open_meteo_client_mock(),
         prompt_builder=ImagePromptBuilder(),
@@ -113,6 +112,10 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
         prompt=expected_prompt,
         base_image_bytes=b"base",
     )
+    [saved] = image_repository.add.call_args.args
+    assert saved.prompt == expected_prompt
+    assert saved.sensor_snapshot is snapshot
+    assert saved.generated_at == mock_utc_now.return_value
 
 
 @patch.object(
@@ -137,14 +140,13 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
     sensor_service.get_snapshot = AsyncMock(return_value=snapshot)
     image_client = MagicMock()
     image_client.generate_image = AsyncMock(return_value=b"jpg-bytes")
-    database = MagicMock()
-    database.save_generated_image_metadata = AsyncMock()
+    image_repository = MagicMock()
     news_api_client = MagicMock()
     news_api_client.get_top_headlines = AsyncMock(return_value=["Story 1"])
     service = ImageGenerationService(
         sensor_service=sensor_service,
         image_client=image_client,
-        database=database,
+        image_repository=image_repository,
         news_api_client=news_api_client,
         open_meteo_client=_make_open_meteo_client_mock(),
         prompt_builder=ImagePromptBuilder(),
