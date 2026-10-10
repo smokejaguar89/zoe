@@ -6,7 +6,7 @@ from app.api.views import load_homepage
 from app.models.domain.generated_image import GeneratedImageMetadata
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.analytics_service import AnalyticsService
-from app.services.image_generation_service import ImageGenerationService
+from app.services.generated_image_service import GeneratedImageService
 from app.services.sensor_service import (
     LIGHT_LOW_LUX_THRESHOLD,
     MOISTURE_THRESHOLD,
@@ -39,8 +39,8 @@ def test_load_homepage_renders_template_with_sensor_data(
         moisture=12.3,
         pressure=1004.5,
     )
-    image_generation_service = MagicMock(spec=ImageGenerationService)
-    image_generation_service.get_latest_generated_image = AsyncMock(
+    generated_image_service = GeneratedImageService(database=MagicMock())
+    generated_image_service.get_latest_generated_image = AsyncMock(
         return_value=GeneratedImageMetadata(
             filename="sunflower_2026-04-03:13:39.jpg",
             generated_at=image_snapshot.timestamp,
@@ -55,14 +55,14 @@ def test_load_homepage_renders_template_with_sensor_data(
             request=request,
             sensor_service=sensor_service,
             analytics_service=analytics_service,
-            image_generation_service=image_generation_service,
+            generated_image_service=generated_image_service,
         )
     )
 
     # Assert
     assert response == "rendered-page"
     get_latest_generated_image = (
-        image_generation_service.get_latest_generated_image
+        generated_image_service.get_latest_generated_image
     )
     get_latest_generated_image.assert_awaited_once_with()
     mock_templates.TemplateResponse.assert_called_once_with(
@@ -102,8 +102,8 @@ def test_load_homepage_handles_missing_gemini_image(mock_templates) -> None:
     sensor_service.get_snapshot = AsyncMock(return_value=sensor_snapshot)
     analytics_service = MagicMock(spec=AnalyticsService)
     analytics_service.get_last_week_snapshots = AsyncMock(return_value=[])
-    image_generation_service = MagicMock(spec=ImageGenerationService)
-    image_generation_service.get_latest_generated_image = AsyncMock(
+    generated_image_service = MagicMock(spec=GeneratedImageService)
+    generated_image_service.get_latest_generated_image = AsyncMock(
         return_value=None
     )
     mock_templates.TemplateResponse.return_value = "rendered-page"
@@ -114,14 +114,14 @@ def test_load_homepage_handles_missing_gemini_image(mock_templates) -> None:
             request=request,
             sensor_service=sensor_service,
             analytics_service=analytics_service,
-            image_generation_service=image_generation_service,
+            generated_image_service=generated_image_service,
         )
     )
 
     # Assert
     assert response == "rendered-page"
     get_latest_generated_image = (
-        image_generation_service.get_latest_generated_image
+        generated_image_service.get_latest_generated_image
     )
     get_latest_generated_image.assert_awaited_once_with()
     mock_templates.TemplateResponse.assert_called_once_with(
@@ -180,8 +180,8 @@ def test_load_homepage_includes_date_and_time_in_time_series(
     analytics_service.get_last_week_snapshots = AsyncMock(
         return_value=snapshots
     )
-    image_generation_service = MagicMock(spec=ImageGenerationService)
-    image_generation_service.get_latest_generated_image = AsyncMock(
+    generated_image_service = MagicMock(spec=GeneratedImageService)
+    generated_image_service.get_latest_generated_image = AsyncMock(
         return_value=None
     )
     mock_templates.TemplateResponse.return_value = "rendered-page"
@@ -192,7 +192,7 @@ def test_load_homepage_includes_date_and_time_in_time_series(
             request=request,
             sensor_service=sensor_service,
             analytics_service=analytics_service,
-            image_generation_service=image_generation_service,
+            generated_image_service=generated_image_service,
         )
     )
 

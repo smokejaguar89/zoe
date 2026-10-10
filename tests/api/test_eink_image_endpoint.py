@@ -1,7 +1,4 @@
-import asyncio
-from datetime import datetime
-from pathlib import Path
-from tempfile import TemporaryDirectory
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -9,25 +6,26 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.api import router
-from app.dependencies import get_image_generation_service
+from app.dependencies import get_generated_image_service
 from app.models.domain.generated_image import GeneratedImageMetadata
-from app.services.image_generation_service import ImageGenerationService
+from app.services.generated_image_service import GeneratedImageService
+
+_NEXT_PULL_TIME = datetime(2026, 4, 9, 12, 10, tzinfo=timezone.utc)
 
 
 @pytest.fixture
-def image_service_mock():
-    """Mock ImageGenerationService for testing."""
-    service = MagicMock(spec=ImageGenerationService)
-    return service
+def image_service():
+    """Real GeneratedImageService backed by a mocked database."""
+    return GeneratedImageService(database=MagicMock())
 
 
 @pytest.fixture
-def app(image_service_mock):
+def app(image_service):
     """Create FastAPI app with mocked dependencies."""
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[get_image_generation_service] = lambda: (
-        image_service_mock
+    app.dependency_overrides[get_generated_image_service] = lambda: (
+        image_service
     )
     return app
 
@@ -35,44 +33,26 @@ def app(image_service_mock):
 @pytest.fixture
 def client(app):
     """Create TestClient for the app."""
-    return TestClient(app)
+    with patch(
+        "app.api.api.get_next_image_pull_time", return_value=_NEXT_PULL_TIME
+    ):
+        yield TestClient(app, base_url="http://zoe.local:8000")
 
 
-@pytest.fixture
-def gemini_image_dir():
-    """Create gemini image directory with test image file."""
-    gemini_dir = (
-        Path(__file__).resolve().parents[2]
-        / "app"
-        / "static"
-        / "img"
-        / "gemini"
+def _set_latest_image(image_service, metadata):
+    image_service.get_latest_generated_image = AsyncMock(return_value=metadata)
+
+
+def _metadata(filename="test_image.jpg"):
+    return GeneratedImageMetadata(
+        filename=filename,
+        generated_at=datetime.now(),
     )
-    gemini_dir.mkdir(parents=True, exist_ok=True)
-
-    image_path = gemini_dir / "test_image.jpg"
-    image_path.write_bytes(b"fake JPG content")
-
-    yield gemini_dir, image_path
-
-    # Cleanup
-    if image_path.exists():
-        image_path.unlink()
 
 
-def test_eink_pull_returns_200_with_valid_image(
-    client, image_service_mock, gemini_image_dir
-):
-    """Test that eink_pull returns 200 status code with valid image."""
-    gemini_dir, image_path = gemini_image_dir
-
+def test_eink_pull_returns_200_with_valid_image(client, image_service):
     # Arrange
-    image_service_mock.get_latest_generated_image = AsyncMock(
-        return_value=GeneratedImageMetadata(
-            filename="test_image.jpg",
-            generated_at=datetime.now(),
-        )
-    )
+    _set_latest_image(image_service, _metadata())
 
     # Act
     response = client.get("/api/images/eink_pull")
@@ -80,118 +60,59 @@ def test_eink_pull_returns_200_with_valid_image(
     # Assert
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
-    assert response.json()["data"]["image_url"] is not None
+    assert response.json() == {
+        "status": 200,
+        "type": "SHOW",
+        "message": "Image retrieved successfully",
+        "data": {
+            "next_cron_time": "2026-04-09T12:10:00Z",
+            "image_url": (
+                "http://zoe.local:8000/static/img/gemini_optimised/"
+                "test_image.jpg"
+            ),
+        },
+    }
 
 
-def test_eink_pull_calls_image_service(
-    client, image_service_mock, gemini_image_dir
-):
-    """Test that eink_pull calls the image generation service."""
-    gemini_dir, image_path = gemini_image_dir
-
+def test_eink_pull_calls_image_service(client, image_service):
     # Arrange
-    image_service_mock.get_latest_generated_image = AsyncMock(
-        return_value=GeneratedImageMetadata(
-            filename="test_image.jpg",
-            generated_at=datetime.now(),
-        )
-    )
+    _set_latest_image(image_service, _metadata())
 
     # Act
-    response = client.get("/api/images/eink_pull")
+    client.get("/api/images/eink_pull")
 
     # Assert
-    image_service_mock.get_latest_generated_image.assert_called_once()
-    assert response.status_code == 200
+    image_service.get_latest_generated_image.assert_awaited_once_with()
 
 
-def test_eink_pull_has_correct_media_type_header(
-    client, image_service_mock, gemini_image_dir
+def test_eink_pull_without_image_still_returns_next_pull_time(
+    client, image_service
 ):
-    """Test that eink_pull response has application/json media type."""
-    gemini_dir, image_path = gemini_image_dir
-
     # Arrange
-    image_service_mock.get_latest_generated_image = AsyncMock(
-        return_value=GeneratedImageMetadata(
-            filename="test_image.jpg",
-            generated_at=datetime.now(),
-        )
-    )
-
-    # Act
-    response = client.get("/api/images/eink_pull")
-
-    # Assert
-    assert response.headers["content-type"] == "application/json"
-
-
-def test_eink_pull_returns_file_with_correct_filename(
-    client, image_service_mock, gemini_image_dir
-):
-    """Test that eink_pull response includes correct filename in URL."""
-    gemini_dir, image_path = gemini_image_dir
-
-    # Arrange
-    image_service_mock.get_latest_generated_image = AsyncMock(
-        return_value=GeneratedImageMetadata(
-            filename="test_image.jpg",
-            generated_at=datetime.now(),
-        )
-    )
+    _set_latest_image(image_service, None)
 
     # Act
     response = client.get("/api/images/eink_pull")
 
     # Assert
     assert response.status_code == 200
-    assert "test_image.jpg" in response.json()["data"]["image_url"]
+    assert response.json() == {
+        "status": 200,
+        "type": None,
+        "message": "No image available",
+        "data": {
+            "next_cron_time": "2026-04-09T12:10:00Z",
+            "image_url": None,
+        },
+    }
 
 
-def test_eink_pull_has_correct_route_path(app):
-    """Test that the eink_pull endpoint is registered at correct path."""
-    # Verify the route exists
-    routes = [route.path for route in app.routes]
-    assert "/api/images/eink_pull" in routes
-
-
-def test_eink_pull_has_get_method(app):
-    """Test that the eink_pull endpoint only accepts GET."""
-    from fastapi.routing import APIRoute
-
-    eink_routes = [
-        route
-        for route in app.routes
-        if isinstance(route, APIRoute)
-        and route.path == "/api/images/eink_pull"
-    ]
-    assert len(eink_routes) == 1
-    assert "GET" in eink_routes[0].methods
-
-
-def test_eink_pull_service_receives_correct_dependency(
-    image_service_mock, gemini_image_dir
-):
-    """Test that the service dependency is correctly injected."""
-    gemini_dir, image_path = gemini_image_dir
-
+def test_eink_pull_only_accepts_get(client, image_service):
     # Arrange
-    app = FastAPI()
-    app.include_router(router)
-    app.dependency_overrides[get_image_generation_service] = lambda: (
-        image_service_mock
-    )
-    client = TestClient(app)
-
-    image_service_mock.get_latest_generated_image = AsyncMock(
-        return_value=GeneratedImageMetadata(
-            filename="test_image.jpg",
-            generated_at=datetime.now(),
-        )
-    )
+    _set_latest_image(image_service, _metadata())
 
     # Act
-    response = client.get("/api/images/eink_pull")
+    response = client.post("/api/images/eink_pull")
 
-    # Assert - Verify the service was called
-    assert image_service_mock.get_latest_generated_image.called
+    # Assert
+    assert response.status_code == 405

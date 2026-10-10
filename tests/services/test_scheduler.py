@@ -1,8 +1,8 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.scheduler.scheduler import Scheduler
+from app.scheduler.scheduler import Scheduler, get_next_image_pull_time
 
 
 def test_collect_data_job_gets_and_saves_snapshot() -> None:
@@ -136,3 +136,30 @@ def test_generate_image_job_always_generates_image() -> None:
 
     # Assert
     image_generation_service.generate_and_save_image.assert_awaited_once_with()
+
+
+def test_next_image_pull_time_is_next_slot_today() -> None:
+    # 09:00 in Zurich (CEST, UTC+2)
+    now = datetime(2026, 4, 9, 7, 0, tzinfo=timezone.utc)
+
+    assert get_next_image_pull_time(now) == datetime(
+        2026, 4, 9, 8, 10, tzinfo=timezone.utc
+    )
+
+
+def test_next_image_pull_time_rolls_over_to_tomorrow() -> None:
+    # 23:00 in Zurich (CEST, UTC+2)
+    now = datetime(2026, 4, 9, 21, 0, tzinfo=timezone.utc)
+
+    assert get_next_image_pull_time(now) == datetime(
+        2026, 4, 10, 4, 10, tzinfo=timezone.utc
+    )
+
+
+def test_next_image_pull_time_respects_dst_change() -> None:
+    # 23:00 on 24 Oct (CEST, UTC+2); clocks go back overnight to CET, UTC+1
+    now = datetime(2026, 10, 24, 21, 0, tzinfo=timezone.utc)
+
+    assert get_next_image_pull_time(now) == datetime(
+        2026, 10, 25, 5, 10, tzinfo=timezone.utc
+    )

@@ -7,6 +7,7 @@ from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.image_generation_service import (
     ImageGenerationService,
 )
+from app.utils.prompt_builder import ImagePromptBuilder
 
 _WEATHER_OVERVIEW = (
     "The current weather: clear sky. The temperature outside is 20.0°C."
@@ -33,29 +34,6 @@ def _make_news_api_client_mock(
         headlines = ["Default Story"]
     client.get_top_headlines = AsyncMock(return_value=headlines)
     return client
-
-
-def test_get_latest_generated_image_returns_database_value() -> None:
-    # Arrange
-    expected = MagicMock()
-    database = MagicMock()
-    database.get_latest_generated_image_metadata = AsyncMock(
-        return_value=expected
-    )
-    service = ImageGenerationService(
-        sensor_service=MagicMock(),
-        image_client=MagicMock(),
-        database=database,
-        news_api_client=_make_news_api_client_mock(),
-        open_meteo_client=_make_open_meteo_client_mock(),
-    )
-
-    # Act
-    generated_image = asyncio.run(service.get_latest_generated_image())
-
-    # Assert
-    assert generated_image == expected
-    database.get_latest_generated_image_metadata.assert_awaited_once_with()
 
 
 @patch.object(
@@ -90,6 +68,7 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
         database=database,
         news_api_client=news_api_client,
         open_meteo_client=_make_open_meteo_client_mock(),
+        prompt_builder=ImagePromptBuilder(),
     )
     service.generated_image_dir = MagicMock()
     service.generated_image_dir.mkdir = MagicMock()
@@ -101,21 +80,25 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
     )
     mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
     expected_prompt = (
-        "Use the provided sunflower painting as the base image. "
-        "Edit the scene to reflect the plant's environment. "
+        "Use the provided painting as the base image: a Van Gogh-style "
+        "view across Zurich rooftops towards the Uetliberg, with a "
+        "potted plant on the rooftop ledge on the right. Keep the "
+        "composition, the swirling brushwork and the TV tower on the "
+        "hill. Edit the scene to reflect the plant's environment. "
         "Incorporate the following details about the plant's current state: "
-        "#1: Keep the sunflower healthy and the soil well hydrated. "
-        "#2: Use soft, natural indoor lighting. "
+        "#1: Keep the potted plant healthy and its soil well hydrated. "
+        "#2: Light the potted plant with soft, gentle light. "
         "#3: Keep a neutral, comfortable atmosphere in the image. "
         "#4: Make the scene look like it's day. "
-        "Incorporate the following information to update the "
-        "background landscape: "
+        "Incorporate the following information to update "
+        "the sky and the hillside: "
         "#1: The current weather: clear sky. "
         "The temperature outside is 20.0°C. "
-        "#2: Update the background landscape "
+        "#2: Update the sky and the hillside "
         "to incorporate this story: Story 1. "
         "Do not use words. Be creative. "
-        "Finally: Don't include any people in the image."
+        "Finally: Keep the man on the rooftop as he is "
+        "and don't add any other people."
     )
 
     # Act
@@ -160,6 +143,7 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
         database=database,
         news_api_client=news_api_client,
         open_meteo_client=_make_open_meteo_client_mock(),
+        prompt_builder=ImagePromptBuilder(),
     )
     service.generated_image_dir = MagicMock()
     service.generated_image_dir.mkdir = MagicMock()
@@ -171,21 +155,25 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
     )
     mock_datetime.now.return_value = datetime(2026, 4, 9, 2, 15)
     expected_prompt = (
-        "Use the provided sunflower painting as the base image. "
-        "Edit the scene to reflect the plant's environment. "
+        "Use the provided painting as the base image: a Van Gogh-style "
+        "view across Zurich rooftops towards the Uetliberg, with a "
+        "potted plant on the rooftop ledge on the right. Keep the "
+        "composition, the swirling brushwork and the TV tower on the "
+        "hill. Edit the scene to reflect the plant's environment. "
         "Incorporate the following details about the plant's current state: "
-        "#1: Make the sunflower wilt and the soil appear dry. "
-        "#2: Dim the scene to suggest a dark room. "
+        "#1: Make the potted plant wilt and its soil appear dry. "
+        "#2: Leave the potted plant in deep shadow. "
         "#3: Add a cool, chilly atmosphere to the image. "
         "#4: Make the scene look like it's night. "
-        "Incorporate the following information to update the "
-        "background landscape: "
+        "Incorporate the following information to update "
+        "the sky and the hillside: "
         "#1: The current weather: clear sky. "
         "The temperature outside is 20.0°C. "
-        "#2: Update the background landscape "
+        "#2: Update the sky and the hillside "
         "to incorporate this story: Story 1. "
         "Do not use words. Be creative. "
-        "Finally: Don't include any people in the image."
+        "Finally: Keep the man on the rooftop as he is "
+        "and don't add any other people."
     )
 
     # Act
@@ -196,23 +184,3 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
         prompt=expected_prompt,
         base_image_bytes=b"base",
     )
-
-
-def test_get_latest_generated_image_returns_none_when_database_empty() -> None:
-    # Arrange
-    database = MagicMock()
-    database.get_latest_generated_image_metadata = AsyncMock(return_value=None)
-    service = ImageGenerationService(
-        sensor_service=MagicMock(),
-        image_client=MagicMock(),
-        database=database,
-        news_api_client=_make_news_api_client_mock(),
-        open_meteo_client=_make_open_meteo_client_mock(),
-    )
-
-    # Act
-    generated_image = asyncio.run(service.get_latest_generated_image())
-
-    # Assert
-    assert generated_image is None
-    database.get_latest_generated_image_metadata.assert_awaited_once_with()

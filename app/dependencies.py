@@ -15,8 +15,10 @@ from app.hardware.fake_drivers import (
 )
 from app.scheduler.scheduler import Scheduler
 from app.services.analytics_service import AnalyticsService
+from app.services.generated_image_service import GeneratedImageService
 from app.services.image_generation_service import ImageGenerationService
 from app.services.sensor_service import SensorService
+from app.utils.prompt_builder import ImagePromptBuilder
 
 
 def is_test_mode() -> bool:
@@ -95,6 +97,10 @@ def get_open_meteo_client() -> OpenMeteoClient:
     return OpenMeteoClient()
 
 
+def get_prompt_builder() -> ImagePromptBuilder:
+    return ImagePromptBuilder()
+
+
 def get_image_generation_service() -> ImageGenerationService:
     return ImageGenerationService(
         sensor_service=get_sensor_service(),
@@ -102,7 +108,12 @@ def get_image_generation_service() -> ImageGenerationService:
         database=get_database(),
         news_api_client=get_news_api_client(),
         open_meteo_client=get_open_meteo_client(),
+        prompt_builder=get_prompt_builder(),
     )
+
+
+def get_generated_image_service() -> GeneratedImageService:
+    return GeneratedImageService(database=get_database())
 
 
 def get_analytics_service() -> AnalyticsService:

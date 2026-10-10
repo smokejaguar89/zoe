@@ -3,11 +3,9 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
-    Response,
+    Request,
     status,
 )
-from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 
 from app.models.dto.get_sensor_data_response import GetSensorDataResponse
 from app.models.dto.get_eink_pull_response import (
@@ -21,7 +19,7 @@ from app.models.dto.get_time_series_response import (
 )
 from app.dependencies import (
     get_analytics_service,
-    get_image_generation_service,
+    get_generated_image_service,
     get_sensor_service,
 )
 from app.services.analytics_service import (
@@ -29,13 +27,15 @@ from app.services.analytics_service import (
     CalculationError,
     TimeGroup,
 )
-from app.services.image_generation_service import ImageGenerationService
+from app.services.generated_image_service import GeneratedImageService
 from app.services.sensor_service import SensorService
-from app.scheduler.scheduler import IMAGE_GEN_CRON_SCHEDULE
+from app.scheduler.scheduler import get_next_image_pull_time
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
+
+EINK_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
 @router.get("/sensors", response_model=GetSensorDataResponse)
@@ -85,57 +85,38 @@ async def get_eink_signal(success: bool):
 
 @router.get("/images/eink_pull", response_model=GetEinkPullResponse)
 async def get_eink_pull(
-    response: Response,
-    image_generation_service: ImageGenerationService = Depends(
-        get_image_generation_service
+    request: Request,
+    generated_image_service: GeneratedImageService = Depends(
+        get_generated_image_service
     ),
 ):
-    metadata = await image_generation_service.get_latest_generated_image()
-    next_pull_time = await get_next_pull_time()
+    metadata = await generated_image_service.get_latest_generated_image()
+    next_cron_time = get_next_image_pull_time().strftime(EINK_TIME_FORMAT)
 
-    if not metadata:
-        response.status_code = status.HTTP_204_NO_CONTENT
-        pull_response = GetEinkPullResponse(
-            status=status.HTTP_204_NO_CONTENT,
+    if metadata is None:
+        logger.info("No image available yet for eInk display.")
+        return GetEinkPullResponse(
+            status=status.HTTP_200_OK,
+            type=None,
             message="No image available",
             data=GetEinkPullResponseData(
-                next_cron_time=next_pull_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                next_cron_time=next_cron_time,
                 image_url=None,
             ),
         )
-        logger.info("Failed: %s", pull_response)
-        return pull_response
 
-    RASPBERRY_PI_DOMAIN = "http://192.168.86.26:8000"
-    file_path = f"{RASPBERRY_PI_DOMAIN}/static/img/gemini_optimised/{metadata.filename}"
+    # Build the URL from the host the display used to reach us
+    image_url = str(request.base_url).rstrip("/") + (
+        generated_image_service.optimised_image_url_path(metadata.filename)
+    )
+    logger.info("Serving eInk image at %s.", image_url)
 
-    logger.info("Getting image at %s.", file_path)
-
-    pull_response = GetEinkPullResponse(
+    return GetEinkPullResponse(
         status=status.HTTP_200_OK,
         type="SHOW",
         message="Image retrieved successfully",
         data=GetEinkPullResponseData(
-            next_cron_time=next_pull_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            image_url=file_path,
+            next_cron_time=next_cron_time,
+            image_url=image_url,
         ),
     )
-    logger.info("Success: %s", pull_response)
-    return pull_response
-
-
-async def get_next_pull_time() -> datetime:
-    now = datetime.now(ZoneInfo("Europe/Zurich"))
-    for hour in IMAGE_GEN_CRON_SCHEDULE:
-        candidate = now.replace(hour=hour, minute=0, second=0, microsecond=0)
-        # Add buffer to ensure the image is ready
-        candidate = candidate + timedelta(minutes=10)
-        if candidate > now + timedelta(minutes=1):
-            return candidate.astimezone(timezone.utc)
-    # If no more slots today, go to the first slot tomorrow
-    tomorrow_first = now.replace(
-        hour=IMAGE_GEN_CRON_SCHEDULE[0], minute=0, second=0, microsecond=0
-    )
-    # Add buffer to ensure the image is ready
-    tomorrow_first = tomorrow_first + timedelta(minutes=10)
-    return tomorrow_first.astimezone(timezone.utc) + timedelta(days=1)
