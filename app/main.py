@@ -37,7 +37,8 @@ async def lifespan(app: FastAPI):
     database = get_database()
     database.init()
 
-    # Initialise scheduler to collect sensor data every minute
+    # Start the scheduler on this event loop: sensor readings every 15
+    # minutes and images on the cron schedule
     scheduler = get_scheduler()
     scheduler.start()
     yield

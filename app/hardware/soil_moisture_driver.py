@@ -13,8 +13,9 @@ class SoilMoistureDriver:
         self.mcp3008 = MCP3008(channel=0)
         # GPIO pin 18 for power control
         self.sparkfun_power = DigitalOutputDevice(18)
-        # The singleton is shared by API and scheduler threads/tasks.
-        # Serialize reads so sensor power transitions cannot interleave.
+        # The singleton is shared by API requests and scheduler jobs, which
+        # all run on the app's event loop. Serialize reads so sensor power
+        # transitions cannot interleave.
         self._lock = asyncio.Lock()
 
     async def get_reading(self) -> SoilMoistureReading:
