@@ -3,6 +3,8 @@ from typing import Optional
 
 import httpx
 
+from app.clients.http_retry import get_with_retries
+
 
 class NewsApiClientError(Exception):
     pass
@@ -19,6 +21,10 @@ class NewsCategory(Enum):
 
 
 class NewsApiClient:
+    REQUEST_TIMEOUT_SECONDS = 15.0
+    MAX_ATTEMPTS = 3
+    RETRY_DELAY_SECONDS = 1.0
+
     def __init__(self, api_key: Optional[str]):
         self.api_key = api_key
         if not self.api_key:
@@ -30,8 +36,20 @@ class NewsApiClient:
             "category": category.value,
             "apiKey": self.api_key,
         }
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, params=params)
+        try:
+            response = await get_with_retries(
+                url,
+                params=params,
+                timeout_seconds=self.REQUEST_TIMEOUT_SECONDS,
+                max_attempts=self.MAX_ATTEMPTS,
+                retry_delay_seconds=self.RETRY_DELAY_SECONDS,
+            )
+        except httpx.RequestError as error:
+            detail = str(error) or type(error).__name__
+            raise NewsApiClientError(
+                f"Error fetching top headlines: {detail}"
+            ) from error
+
         if response.status_code == 200:
             return [
                 article["title"]

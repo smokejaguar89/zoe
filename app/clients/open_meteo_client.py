@@ -1,12 +1,13 @@
-import asyncio
 from datetime import datetime, timezone
-import logging
 
 import httpx
+
+from app.clients.http_retry import get_with_retries
 from app.models.domain.weather_snapshot import WeatherSnapshot, WeatherCode
 from app.utils.clock import LOCAL_TIMEZONE
 
-logger = logging.getLogger(__name__)
+# Enough of an error response to see why a request failed
+MAX_ERROR_BODY_CHARS = 500
 
 
 class OpenMeteoClientError(Exception):
@@ -40,44 +41,31 @@ class OpenMeteoClient:
             "sunset",
         ]
 
-        response = None
-        for attempt in range(1, self.MAX_ATTEMPTS + 1):
-            try:
-                async with httpx.AsyncClient(
-                    timeout=self.REQUEST_TIMEOUT_SECONDS
-                ) as client:
-                    response = await client.get(
-                        self.api_url,
-                        params={
-                            "latitude": self.ZURICH_LAT,
-                            "longitude": self.ZURICH_LON,
-                            "models": "meteoswiss_icon_ch1",
-                            "current": ",".join(CURRENT_FIELDS),
-                            "daily": ",".join(DAILY_FIELDS),
-                            "timezone": LOCAL_TIMEZONE.key,
-                        },
-                    )
-                break
-            except httpx.RequestError as error:
-                detail = str(error) or type(error).__name__
-                if attempt == self.MAX_ATTEMPTS:
-                    raise OpenMeteoClientError(
-                        f"Error fetching weather data: {detail}"
-                    )
-
-                logger.warning(
-                    "Open-Meteo request failed (attempt %d/%d): %s; "
-                    "retrying in %.1fs",
-                    attempt,
-                    self.MAX_ATTEMPTS,
-                    detail,
-                    self.RETRY_DELAY_SECONDS,
-                )
-                await asyncio.sleep(self.RETRY_DELAY_SECONDS)
+        try:
+            response = await get_with_retries(
+                self.api_url,
+                params={
+                    "latitude": self.ZURICH_LAT,
+                    "longitude": self.ZURICH_LON,
+                    "models": "meteoswiss_icon_ch1",
+                    "current": ",".join(CURRENT_FIELDS),
+                    "daily": ",".join(DAILY_FIELDS),
+                    "timezone": LOCAL_TIMEZONE.key,
+                },
+                timeout_seconds=self.REQUEST_TIMEOUT_SECONDS,
+                max_attempts=self.MAX_ATTEMPTS,
+                retry_delay_seconds=self.RETRY_DELAY_SECONDS,
+            )
+        except httpx.RequestError as error:
+            detail = str(error) or type(error).__name__
+            raise OpenMeteoClientError(
+                f"Error fetching weather data: {detail}"
+            ) from error
 
         if response.status_code != 200:
             raise OpenMeteoClientError(
-                f"Error fetching weather data: {response.status_code}"
+                f"Error fetching weather data: {response.status_code} - "
+                f"{response.text[:MAX_ERROR_BODY_CHARS]}"
             )
 
         data = response.json()

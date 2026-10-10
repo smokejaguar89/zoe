@@ -41,9 +41,7 @@ def test_get_current_weather_zurich_returns_weather_snapshot() -> None:
     mock_http_client.get = AsyncMock(return_value=mock_response)
 
     # Act
-    with patch(
-        "app.clients.open_meteo_client.httpx.AsyncClient"
-    ) as MockAsyncClient:
+    with patch("app.clients.http_retry.httpx.AsyncClient") as MockAsyncClient:
         MockAsyncClient.return_value.__aenter__ = AsyncMock(
             return_value=mock_http_client
         )
@@ -86,34 +84,98 @@ def test_get_current_weather_zurich_returns_weather_snapshot() -> None:
     )
 
 
-def test_get_current_weather_zurich_raises_for_non_200_response() -> None:
+def _patch_http(responses):
+    """Patch httpx so successive GETs return (or raise) the given items."""
+    mock_http_client = AsyncMock()
+    mock_http_client.get = AsyncMock(side_effect=responses)
+    client_patch = patch("app.clients.http_retry.httpx.AsyncClient")
+    MockAsyncClient = client_patch.start()
+    MockAsyncClient.return_value.__aenter__ = AsyncMock(
+        return_value=mock_http_client
+    )
+    MockAsyncClient.return_value.__aexit__ = AsyncMock(return_value=None)
+    return client_patch, mock_http_client
+
+
+def _error_response(status_code: int, text: str) -> MagicMock:
+    response = MagicMock()
+    response.status_code = status_code
+    response.text = text
+    return response
+
+
+def test_get_current_weather_zurich_retries_503_then_raises() -> None:
     # Arrange
     client = OpenMeteoClient()
-    mock_response = MagicMock()
-    mock_response.status_code = 503
-    mock_response.json.return_value = {
-        "current": {"time": "2026-04-12T10:00"},
+    client_patch, mock_http_client = _patch_http(
+        [_error_response(503, "Service Unavailable")] * client.MAX_ATTEMPTS
+    )
+
+    # Act
+    try:
+        with patch(
+            "app.clients.http_retry.asyncio.sleep", new=AsyncMock()
+        ) as sleep_mock:
+            with pytest.raises(OpenMeteoClientError) as error:
+                asyncio.run(client.get_current_weather_zurich())
+    finally:
+        client_patch.stop()
+
+    # Assert: retried with doubling waits, and the error says why
+    assert mock_http_client.get.call_count == client.MAX_ATTEMPTS
+    assert [call.args[0] for call in sleep_mock.await_args_list] == [1.0, 2.0]
+    assert str(error.value) == (
+        "Error fetching weather data: 503 - Service Unavailable"
+    )
+
+
+def test_get_current_weather_zurich_recovers_after_503() -> None:
+    # Arrange
+    client = OpenMeteoClient()
+    ok_response = MagicMock()
+    ok_response.status_code = 200
+    ok_response.json.return_value = {
+        "current": {"time": "2026-04-12T10:00", "weather_code": 0},
         "daily": {
             "sunrise": ["2026-04-12T06:30"],
             "sunset": ["2026-04-12T20:10"],
         },
     }
-    mock_http_client = AsyncMock()
-    mock_http_client.get = AsyncMock(return_value=mock_response)
+    client_patch, mock_http_client = _patch_http(
+        [_error_response(503, "Service Unavailable"), ok_response]
+    )
 
     # Act
-    with patch(
-        "app.clients.open_meteo_client.httpx.AsyncClient"
-    ) as MockAsyncClient:
-        MockAsyncClient.return_value.__aenter__ = AsyncMock(
-            return_value=mock_http_client
-        )
-        MockAsyncClient.return_value.__aexit__ = AsyncMock(return_value=None)
-        with pytest.raises(OpenMeteoClientError) as error:
-            asyncio.run(client.get_current_weather_zurich())
+    try:
+        with patch("app.clients.http_retry.asyncio.sleep", new=AsyncMock()):
+            weather = asyncio.run(client.get_current_weather_zurich())
+    finally:
+        client_patch.stop()
 
     # Assert
-    assert str(error.value) == "Error fetching weather data: 503"
+    assert mock_http_client.get.call_count == 2
+    assert weather.weather_code == WeatherCode.CLEAR_SKY
+
+
+def test_get_current_weather_zurich_does_not_retry_client_errors() -> None:
+    # Arrange
+    client = OpenMeteoClient()
+    client_patch, mock_http_client = _patch_http(
+        [_error_response(400, '{"reason": "Invalid model"}')]
+    )
+
+    # Act
+    try:
+        with pytest.raises(OpenMeteoClientError) as error:
+            asyncio.run(client.get_current_weather_zurich())
+    finally:
+        client_patch.stop()
+
+    # Assert
+    assert mock_http_client.get.call_count == 1
+    assert str(error.value) == (
+        'Error fetching weather data: 400 - {"reason": "Invalid model"}'
+    )
 
 
 def test_get_current_weather_zurich_raises_for_request_exception() -> None:
@@ -125,9 +187,10 @@ def test_get_current_weather_zurich_raises_for_request_exception() -> None:
     )
 
     # Act
-    with patch(
-        "app.clients.open_meteo_client.httpx.AsyncClient"
-    ) as MockAsyncClient:
+    with (
+        patch("app.clients.http_retry.httpx.AsyncClient") as MockAsyncClient,
+        patch("app.clients.http_retry.asyncio.sleep", new=AsyncMock()),
+    ):
         MockAsyncClient.return_value.__aenter__ = AsyncMock(
             return_value=mock_http_client
         )
@@ -172,11 +235,9 @@ def test_get_current_weather_zurich_retries_then_succeeds() -> None:
 
     # Act
     with (
+        patch("app.clients.http_retry.httpx.AsyncClient") as MockAsyncClient,
         patch(
-            "app.clients.open_meteo_client.httpx.AsyncClient"
-        ) as MockAsyncClient,
-        patch(
-            "app.clients.open_meteo_client.asyncio.sleep",
+            "app.clients.http_retry.asyncio.sleep",
             new=AsyncMock(),
         ) as sleep_mock,
     ):
@@ -200,11 +261,9 @@ def test_get_current_weather_zurich_raises_after_max_attempts() -> None:
 
     # Act
     with (
+        patch("app.clients.http_retry.httpx.AsyncClient") as MockAsyncClient,
         patch(
-            "app.clients.open_meteo_client.httpx.AsyncClient"
-        ) as MockAsyncClient,
-        patch(
-            "app.clients.open_meteo_client.asyncio.sleep",
+            "app.clients.http_retry.asyncio.sleep",
             new=AsyncMock(),
         ) as sleep_mock,
     ):

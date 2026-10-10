@@ -1,6 +1,7 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from app.clients.news_api_client import (
@@ -33,9 +34,7 @@ def test_get_top_headlines_returns_titles_for_200_response() -> None:
     mock_http_client.get = AsyncMock(return_value=mock_response)
 
     # Act
-    with patch(
-        "app.clients.news_api_client.httpx.AsyncClient"
-    ) as MockAsyncClient:
+    with patch("app.clients.http_retry.httpx.AsyncClient") as MockAsyncClient:
         MockAsyncClient.return_value.__aenter__ = AsyncMock(
             return_value=mock_http_client
         )
@@ -65,9 +64,10 @@ def test_get_top_headlines_raises_for_non_200_response() -> None:
     mock_http_client.get = AsyncMock(return_value=mock_response)
 
     # Act
-    with patch(
-        "app.clients.news_api_client.httpx.AsyncClient"
-    ) as MockAsyncClient:
+    with (
+        patch("app.clients.http_retry.httpx.AsyncClient") as MockAsyncClient,
+        patch("app.clients.http_retry.asyncio.sleep", new=AsyncMock()),
+    ):
         MockAsyncClient.return_value.__aenter__ = AsyncMock(
             return_value=mock_http_client
         )
@@ -81,3 +81,33 @@ def test_get_top_headlines_raises_for_non_200_response() -> None:
     assert (
         str(error.value) == "Error fetching top headlines: 429 - rate limited"
     )
+    assert mock_http_client.get.call_count == client.MAX_ATTEMPTS
+
+
+def test_get_top_headlines_wraps_network_errors() -> None:
+    # Arrange
+    client = NewsApiClient(api_key="test-key")
+    mock_http_client = AsyncMock()
+    mock_http_client.get = AsyncMock(
+        side_effect=httpx.ConnectError("connection refused")
+    )
+
+    # Act
+    with (
+        patch("app.clients.http_retry.httpx.AsyncClient") as MockAsyncClient,
+        patch("app.clients.http_retry.asyncio.sleep", new=AsyncMock()),
+    ):
+        MockAsyncClient.return_value.__aenter__ = AsyncMock(
+            return_value=mock_http_client
+        )
+        MockAsyncClient.return_value.__aexit__ = AsyncMock(return_value=None)
+        with pytest.raises(NewsApiClientError) as error:
+            asyncio.run(
+                client.get_top_headlines(category=NewsCategory.GENERAL)
+            )
+
+    # Assert
+    assert str(error.value) == (
+        "Error fetching top headlines: connection refused"
+    )
+    assert mock_http_client.get.call_count == client.MAX_ATTEMPTS
