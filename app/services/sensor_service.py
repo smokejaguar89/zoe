@@ -1,10 +1,10 @@
-from datetime import datetime, timezone
 import asyncio
 from app.hardware.driver_protocols import HardwareDriverProtocol
 from app.models.domain.bme280_reading import BME280Reading
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.models.domain.tsl2591_reading import TSL2591Reading
 from app.models.domain.soil_moisture_reading import SoilMoistureReading
+from app.utils.clock import utc_now
 
 # Soil hydration is normalized to [0.0, 1.0]
 MOISTURE_THRESHOLD = 0.35
@@ -46,5 +46,5 @@ class SensorService:
             pressure=bme280_reading.barometric_pressure_hpa,
             light=tsl2591_reading.luminous_flux,
             moisture=soil_moisture_reading.soil_hydration,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=utc_now(),
         )
