@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -9,7 +11,7 @@ class SensorSnapshotDto(BaseModel):
     light: float
     moisture: float
     pressure: float
-    timestamp: str  # ISO format string for easier JSON serialization
+    timestamp: datetime  # Serialized as ISO 8601 with a UTC offset
 
 
 class GetTimeSeriesResponse(BaseModel):

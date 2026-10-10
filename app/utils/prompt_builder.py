@@ -4,6 +4,7 @@ from enum import Enum
 
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.models.domain.weather_snapshot import WeatherSnapshot
+from app.utils.clock import to_local
 from app.services.sensor_service import (
     LIGHT_LOW_LUX_THRESHOLD,
     LIGHT_NORMAL_LUX_UPPER_THRESHOLD,
@@ -124,9 +125,9 @@ class ImagePromptBuilder:
     def _get_time_of_day(
         self, now: datetime, sunrise: datetime, sunset: datetime
     ) -> DayPhase:
-        hour = now.hour
-        sunrise_hour = sunrise.hour
-        sunset_hour = sunset.hour
+        hour = to_local(now).hour
+        sunrise_hour = to_local(sunrise).hour
+        sunset_hour = to_local(sunset).hour
 
         if sunrise_hour <= hour < sunrise_hour + 2:
             return DayPhase.SUNRISE

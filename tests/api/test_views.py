@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.api.views import load_homepage
@@ -43,7 +43,8 @@ def test_load_homepage_renders_template_with_sensor_data(
     generated_image_service.get_latest_generated_image = AsyncMock(
         return_value=GeneratedImageMetadata(
             filename="sunflower_2026-04-03:13:39.jpg",
-            generated_at=image_snapshot.timestamp,
+            # 13:39 in Zurich (CEST, UTC+2)
+            generated_at=datetime(2026, 4, 3, 11, 39, tzinfo=timezone.utc),
             sensor_snapshot=image_snapshot,
         )
     )
@@ -79,9 +80,7 @@ def test_load_homepage_renders_template_with_sensor_data(
             "generated_image_path": (
                 "/static/img/gemini/sunflower_2026-04-03:13:39.jpg"
             ),
-            "generated_image_generated_at": (
-                image_snapshot.timestamp.strftime("%Y-%m-%d:%H:%M")
-            ),
+            "generated_image_generated_at": "2026-04-03:13:39",
             "generated_image_snapshot": image_snapshot,
         },
     )
@@ -165,7 +164,7 @@ def test_load_homepage_includes_date_and_time_in_time_series(
             light=250.0,
             moisture=0.45,
             pressure=1004.0,
-            timestamp=datetime(2026, 4, 10, 8, 30),
+            timestamp=datetime(2026, 4, 10, 6, 30, tzinfo=timezone.utc),
         ),
         SensorSnapshot(
             temperature=20.5,
@@ -173,7 +172,7 @@ def test_load_homepage_includes_date_and_time_in_time_series(
             light=240.0,
             moisture=0.44,
             pressure=1003.5,
-            timestamp=datetime(2026, 4, 11, 9, 45),
+            timestamp=datetime(2026, 4, 11, 7, 45, tzinfo=timezone.utc),
         ),
     ]
     analytics_service = MagicMock(spec=AnalyticsService)
@@ -199,6 +198,7 @@ def test_load_homepage_includes_date_and_time_in_time_series(
     # Assert
     assert response == "rendered-page"
     template_kwargs = mock_templates.TemplateResponse.call_args.kwargs
+    # Labels are shown in Zurich time
     assert template_kwargs["context"]["time_series"] == [
         {
             "time": "2026-04-10 08:30",

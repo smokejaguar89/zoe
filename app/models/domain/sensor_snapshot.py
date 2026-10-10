@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+
+from app.utils.clock import utc_now
 
 
 @dataclass
@@ -10,8 +11,4 @@ class SensorSnapshot:
     humidity: float
     moisture: float
     pressure: float
-    timestamp: Optional[datetime] = None
-
-    def __post_init__(self):
-        if self.timestamp is None:
-            self.timestamp = datetime.now()
+    timestamp: datetime = field(default_factory=utc_now)

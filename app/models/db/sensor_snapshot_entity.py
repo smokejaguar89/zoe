@@ -3,7 +3,9 @@ from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
+from app.db.types import UTCDateTime
 from app.models.domain.sensor_snapshot import SensorSnapshot
+from app.utils.clock import utc_now
 
 
 class SensorSnapshotEntity(SQLModel, table=True):
@@ -14,7 +16,7 @@ class SensorSnapshotEntity(SQLModel, table=True):
     moisture: float
     pressure: float
     timestamp: datetime.datetime = Field(
-        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+        default_factory=utc_now, sa_type=UTCDateTime
     )
 
     def to_sensor_snapshot(self) -> SensorSnapshot:

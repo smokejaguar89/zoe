@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 
@@ -7,6 +7,7 @@ from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.image_generation_service import (
     ImageGenerationService,
 )
+from app.utils.clock import LOCAL_TIMEZONE
 from app.utils.prompt_builder import ImagePromptBuilder
 
 _WEATHER_OVERVIEW = (
@@ -18,8 +19,8 @@ def _make_open_meteo_client_mock() -> MagicMock:
     mock_weather = MagicMock()
     mock_weather.weather_code.name = "CLEAR_SKY"
     mock_weather.temperature = 20.0
-    mock_weather.sunrise = datetime(2026, 4, 9, 6, 0)
-    mock_weather.sunset = datetime(2026, 4, 9, 20, 0)
+    mock_weather.sunrise = datetime(2026, 4, 9, 6, 0, tzinfo=LOCAL_TIMEZONE)
+    mock_weather.sunset = datetime(2026, 4, 9, 20, 0, tzinfo=LOCAL_TIMEZONE)
     client = MagicMock()
     client.get_current_weather_zurich = AsyncMock(return_value=mock_weather)
     return client
@@ -40,9 +41,9 @@ def _make_news_api_client_mock(
     ImageGenerationService, "_write_optimised_image", return_value=None
 )
 @patch("app.services.image_generation_service.random.random", return_value=0.9)
-@patch("app.services.image_generation_service.datetime")
+@patch("app.services.image_generation_service.utc_now")
 def test_generate_and_save_image_uses_exact_healthy_prompt(
-    mock_datetime,
+    mock_utc_now,
     _mock_random,
     _mock_write_optimised,
 ) -> None:
@@ -78,7 +79,10 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
     service.base_image_path = MagicMock(
         read_bytes=MagicMock(return_value=b"base")
     )
-    mock_datetime.now.return_value = datetime(2026, 4, 9, 14, 30)
+    # 14:30 in Zurich
+    mock_utc_now.return_value = datetime(
+        2026, 4, 9, 12, 30, tzinfo=timezone.utc
+    )
     expected_prompt = (
         "Use the provided painting as the base image: a Van Gogh-style "
         "view across Zurich rooftops towards the Uetliberg, with a "
@@ -115,9 +119,9 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
     ImageGenerationService, "_write_optimised_image", return_value=None
 )
 @patch("app.services.image_generation_service.random.random", return_value=0.9)
-@patch("app.services.image_generation_service.datetime")
+@patch("app.services.image_generation_service.utc_now")
 def test_generate_and_save_image_uses_exact_stressed_prompt(
-    mock_datetime,
+    mock_utc_now,
     _mock_random,
     _mock_write_optimised,
 ) -> None:
@@ -153,7 +157,10 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
     service.base_image_path = MagicMock(
         read_bytes=MagicMock(return_value=b"base")
     )
-    mock_datetime.now.return_value = datetime(2026, 4, 9, 2, 15)
+    # 02:15 in Zurich
+    mock_utc_now.return_value = datetime(
+        2026, 4, 9, 0, 15, tzinfo=timezone.utc
+    )
     expected_prompt = (
         "Use the provided painting as the base image: a Van Gogh-style "
         "view across Zurich rooftops towards the Uetliberg, with a "

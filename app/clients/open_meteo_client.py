@@ -1,9 +1,10 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 import httpx
 from app.models.domain.weather_snapshot import WeatherSnapshot, WeatherCode
+from app.utils.clock import LOCAL_TIMEZONE
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class OpenMeteoClient:
                             "models": "meteoswiss_icon_ch1",
                             "current": ",".join(CURRENT_FIELDS),
                             "daily": ",".join(DAILY_FIELDS),
-                            "timezone": "Europe/Zurich",
+                            "timezone": LOCAL_TIMEZONE.key,
                         },
                     )
                 break
@@ -93,7 +94,15 @@ class OpenMeteoClient:
             showers=current.get("showers"),
             snowfall=current.get("snowfall"),
             cloud_cover=current.get("cloud_cover"),
-            sunrise=datetime.fromisoformat(daily.get("sunrise", [])[0]),
-            sunset=datetime.fromisoformat(daily.get("sunset", [])[0]),
-            timestamp=datetime.fromisoformat(current.get("time")),
+            sunrise=self._parse_local_time(daily.get("sunrise", [])[0]),
+            sunset=self._parse_local_time(daily.get("sunset", [])[0]),
+            timestamp=self._parse_local_time(current.get("time")),
+        )
+
+    def _parse_local_time(self, value: str) -> datetime:
+        # Open-Meteo returns naive times in the requested timezone
+        return (
+            datetime.fromisoformat(value)
+            .replace(tzinfo=LOCAL_TIMEZONE)
+            .astimezone(timezone.utc)
         )

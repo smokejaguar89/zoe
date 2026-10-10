@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -60,9 +60,12 @@ def test_get_current_weather_zurich_returns_weather_snapshot() -> None:
     assert weather.showers == 0.1
     assert weather.snowfall == 0.0
     assert weather.cloud_cover == 42
-    assert weather.sunrise == datetime(2026, 4, 12, 6, 30)
-    assert weather.sunset == datetime(2026, 4, 12, 20, 10)
-    assert weather.timestamp == datetime(2026, 4, 12, 10, 0)
+    # Open-Meteo returns Zurich local times (CEST, UTC+2)
+    assert weather.sunrise == datetime(2026, 4, 12, 4, 30, tzinfo=timezone.utc)
+    assert weather.sunset == datetime(2026, 4, 12, 18, 10, tzinfo=timezone.utc)
+    assert weather.timestamp == datetime(
+        2026, 4, 12, 8, 0, tzinfo=timezone.utc
+    )
 
     MockAsyncClient.assert_called_once_with(
         timeout=client.REQUEST_TIMEOUT_SECONDS

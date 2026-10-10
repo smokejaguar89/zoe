@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI
@@ -113,3 +114,32 @@ def test_last_week_average_route_returns_404_when_no_data() -> None:
     assert response.json() == {
         "detail": "No sensor readings found for the past week."
     }
+
+
+def test_time_series_route_returns_utc_iso_timestamps() -> None:
+    # Arrange
+    analytics_service = MagicMock(spec=AnalyticsService)
+    analytics_service.get_last_week_snapshots = AsyncMock(
+        return_value=[
+            SensorSnapshot(
+                temperature=21.0,
+                humidity=40.0,
+                light=100.0,
+                moisture=0.5,
+                pressure=1005.0,
+                timestamp=datetime(2026, 4, 9, 12, 0, tzinfo=timezone.utc),
+            )
+        ]
+    )
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_analytics_service] = lambda: analytics_service
+
+    # Act
+    response = TestClient(app).get("/api/sensors/time_series")
+
+    # Assert
+    assert response.status_code == 200
+    assert response.json()["snapshots"][0]["timestamp"] == (
+        "2026-04-09T12:00:00Z"
+    )
