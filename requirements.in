@@ -1,0 +1,42 @@
+# Direct dependencies, with the lowest versions we support.
+#
+# Don't install from this file. Install from requirements.txt, the lock file
+# compiled from it with every package (including transitive ones) pinned:
+#
+#   pip install -r requirements.txt
+#
+# After changing this file, or to upgrade, regenerate the lock file with uv
+# (https://docs.astral.sh/uv/) and commit both files:
+#
+#   uv pip compile requirements.in --universal --python-version 3.10 \
+#       -o requirements.txt            # add --upgrade to take new versions
+#
+# --universal makes one lock file valid on both macOS and the Pi.
+
+# Web Framework & Server
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+
+# Templating & Static Files
+jinja2>=3.1.0
+
+# Database & ORM
+sqlmodel>=0.0.14
+# Note: sqlite3 is built-in to Python, no pip install needed
+
+# Background Tasks & Scheduling
+apscheduler>=3.10.0
+
+# AI / Gemini
+google-genai>=1.10.0
+python-dotenv>=1.0.1
+
+# Testing
+pytest>=7.0.0
+httpx>=0.24.0
+
+# Image Processing
+Pillow>=10.0.0
+
+# Hardware dependencies live in requirements-hardware.txt
+# so local/dev installs (macOS/Windows/Linux without GPIO) still work.
