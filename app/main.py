@@ -1,14 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 import sys
-import os
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from dotenv import load_dotenv
 
 from app.api import api, views
+from app.config import STATIC_DIR
 from app.dependencies import get_database, get_scheduler
 
 logging.basicConfig(
@@ -21,8 +19,6 @@ app_logger = logging.getLogger("app")
 
 # Prevent APScheduler from being too noisy (optional but recommended)
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
-
-load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 
 # import app.services.hardware as hardware # Placeholder for your GPIO setup
 
@@ -50,7 +46,7 @@ app = FastAPI(title="Zoe", lifespan=lifespan)
 
 # --- 3. Static Files & Templates ---
 # This tells FastAPI where to find your CSS, Images, and JS
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # --- 4. Include Routers ---
 # This pulls in the code from your other files
