@@ -39,3 +39,20 @@ if "adafruit_tsl2591" not in sys.modules:
 
     adafruit_tsl2591_module.TSL2591 = _StubTSL2591
     sys.modules["adafruit_tsl2591"] = adafruit_tsl2591_module
+
+if "gpiozero" not in sys.modules:
+    gpiozero_module = types.ModuleType("gpiozero")
+
+    class _StubGpioDevice:
+        def __init__(self, *args, **kwargs):
+            self.value = 0.0
+
+        def on(self):
+            pass
+
+        def off(self):
+            pass
+
+    gpiozero_module.MCP3008 = _StubGpioDevice
+    gpiozero_module.DigitalOutputDevice = _StubGpioDevice
+    sys.modules["gpiozero"] = gpiozero_module

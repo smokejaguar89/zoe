@@ -1,98 +1,133 @@
-import importlib
+import asyncio
 from unittest.mock import patch, sentinel
 
+import pytest
+
 from app import dependencies
-from app.scheduler.scheduler import MISFIRE_GRACE_SECONDS
-from app.utils.clock import LOCAL_TIMEZONE
+from app.hardware.bme280_driver import BME280Driver
 from app.hardware.fake_drivers import (
     FakeBME280Driver,
-    FakeI2CDriver,
     FakeSoilMoistureDriver,
     FakeTSL2591Driver,
 )
+from app.hardware.soil_moisture_driver import SoilMoistureDriver
+from app.hardware.tsl2591_driver import TSL2591Driver
+from app.scheduler.scheduler import MISFIRE_GRACE_SECONDS
+from app.utils.clock import LOCAL_TIMEZONE
+
+_CACHED_HARDWARE_PROVIDERS = (
+    dependencies.get_i2c_bus,
+    dependencies.get_bme280_driver,
+    dependencies.get_tsl2591_driver,
+    dependencies.get_soil_moisture_driver,
+)
 
 
-def reload_dependencies():
-    return importlib.reload(dependencies)
+@pytest.fixture(autouse=True)
+def clear_provider_caches():
+    for provider in _CACHED_HARDWARE_PROVIDERS:
+        provider.cache_clear()
+    yield
+    for provider in _CACHED_HARDWARE_PROVIDERS:
+        provider.cache_clear()
+
+
+@pytest.fixture
+def hardware_mode(monkeypatch):
+    monkeypatch.delenv("SENSOR_MODE", raising=False)
+    monkeypatch.delenv("TEST", raising=False)
 
 
 def test_dependency_providers_use_fake_drivers_in_test_mode(monkeypatch):
     # Arrange
     monkeypatch.setenv("SENSOR_MODE", "TEST")
-    reloaded_dependencies = reload_dependencies()
 
     # Act
-    i2c_bus = reloaded_dependencies.get_i2c_bus()
-    bme280 = reloaded_dependencies.get_bme280_driver()
-    tsl2591 = reloaded_dependencies.get_tsl2591_driver()
-    soil_moisture = reloaded_dependencies.get_soil_moisture_driver()
+    bme280 = dependencies.get_bme280_driver()
+    tsl2591 = dependencies.get_tsl2591_driver()
+    soil_moisture = dependencies.get_soil_moisture_driver()
 
     # Assert
-    assert isinstance(i2c_bus, FakeI2CDriver)
     assert isinstance(bme280, FakeBME280Driver)
     assert isinstance(tsl2591, FakeTSL2591Driver)
     assert isinstance(soil_moisture, FakeSoilMoistureDriver)
 
 
-def test_i2c_driver_providers_share_one_i2c_bus(monkeypatch):
+def test_test_mode_does_not_touch_the_i2c_bus(monkeypatch):
     # Arrange
-    monkeypatch.delenv("SENSOR_MODE", raising=False)
-    reloaded_dependencies = reload_dependencies()
+    monkeypatch.setenv("SENSOR_MODE", "TEST")
 
-    with (
-        patch(
-            "app.hardware.i2c_driver.board.I2C",
-            return_value=object(),
-        ),
-        patch.object(
-            reloaded_dependencies,
-            "BME280Driver",
-        ) as mock_bme280_driver,
-        patch.object(
-            reloaded_dependencies,
-            "TSL2591Driver",
-        ) as mock_tsl2591_driver,
-    ):
-        mock_bme280_driver.side_effect = lambda i2c_driver: type(
-            "FakeBME280Driver",
-            (),
-            {"_i2c_driver": i2c_driver},
-        )()
-        mock_tsl2591_driver.side_effect = lambda i2c_driver: type(
-            "FakeTSL2591Driver",
-            (),
-            {"_i2c_driver": i2c_driver},
-        )()
+    # Act
+    with patch("app.hardware.i2c_bus.I2CBus") as bus_cls:
+        dependencies.get_bme280_driver()
+        dependencies.get_tsl2591_driver()
 
-        # Act
-        bme280 = reloaded_dependencies.get_bme280_driver()
-        tsl2591 = reloaded_dependencies.get_tsl2591_driver()
-
-        # Assert
-        assert bme280._i2c_driver is tsl2591._i2c_driver
+    # Assert
+    bus_cls.assert_not_called()
 
 
-def test_soil_moisture_driver_provider_is_singleton(
-    monkeypatch,
+@patch("app.hardware.tsl2591_driver.TSL2591Driver")
+@patch("app.hardware.bme280_driver.BME280Driver")
+@patch("app.hardware.i2c_bus.I2CBus")
+def test_i2c_drivers_share_one_bus(
+    bus_cls, bme280_cls, tsl2591_cls, hardware_mode
 ):
+    # Act
+    dependencies.get_bme280_driver()
+    dependencies.get_tsl2591_driver()
+
+    # Assert
+    bus_cls.assert_called_once_with()
+    bme280_cls.assert_called_once_with(bus=bus_cls.return_value)
+    tsl2591_cls.assert_called_once_with(bus=bus_cls.return_value)
+
+
+@patch("app.hardware.bme280_driver.BME280Driver")
+@patch("app.hardware.i2c_bus.I2CBus")
+def test_i2c_drivers_are_initialised_once(bus_cls, bme280_cls, hardware_mode):
+    # Act
+    first = dependencies.get_bme280_driver()
+    second = dependencies.get_bme280_driver()
+
+    # Assert
+    assert first is second
+    bme280_cls.assert_called_once()
+
+
+@patch(
+    "app.hardware.soil_moisture_driver.SoilMoistureDriver",
+    return_value=sentinel.soil_moisture_driver,
+)
+def test_soil_moisture_driver_provider_is_singleton(
+    soil_moisture_cls, hardware_mode
+):
+    # Act
+    first = dependencies.get_soil_moisture_driver()
+    second = dependencies.get_soil_moisture_driver()
+
+    # Assert
+    assert first is second
+    assert first is sentinel.soil_moisture_driver
+    soil_moisture_cls.assert_called_once_with()
+
+
+def test_hardware_mode_sensor_service_reads_real_drivers(hardware_mode):
+    """Exercises the Pi's wiring end to end, with the stub chips from
+    conftest.py standing in for the Adafruit and gpiozero libraries."""
     # Arrange
-    monkeypatch.delenv("SENSOR_MODE", raising=False)
-    reloaded_dependencies = reload_dependencies()
+    sensor_service = dependencies.get_sensor_service()
 
-    with patch.object(
-        reloaded_dependencies,
-        "SoilMoistureDriver",
-    ) as mock_soil_moisture_driver:
-        mock_soil_moisture_driver.return_value = sentinel.soil_moisture_driver
+    # Act
+    snapshot = asyncio.run(sensor_service.get_snapshot())
 
-        # Act
-        first = reloaded_dependencies.get_soil_moisture_driver()
-        second = reloaded_dependencies.get_soil_moisture_driver()
-
-        # Assert
-        assert first is second
-        assert first is sentinel.soil_moisture_driver
-        mock_soil_moisture_driver.assert_called_once_with()
+    # Assert
+    assert isinstance(sensor_service.bme280, BME280Driver)
+    assert isinstance(sensor_service.tsl2591, TSL2591Driver)
+    assert isinstance(sensor_service.soil_moisture, SoilMoistureDriver)
+    assert snapshot.temperature == 0.0
+    assert snapshot.light == 0.0
+    assert snapshot.moisture == 0.0
+    dependencies.get_i2c_bus().shutdown()
 
 
 def test_apscheduler_uses_zurich_time_and_misfire_grace() -> None:
