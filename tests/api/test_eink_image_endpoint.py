@@ -11,6 +11,9 @@ from app.dependencies import get_generated_image_service
 from app.models.domain.generated_image import GeneratedImageMetadata
 from app.services.generated_image_service import GeneratedImageService
 
+# Every test runs at the same fixed "now": 10:25 UTC, with the next pull
+# at 12:10 UTC (14:10 in Zurich), 1h 45m later
+_NOW = datetime(2026, 4, 9, 10, 25, tzinfo=timezone.utc)
 _NEXT_PULL_TIME = datetime(2026, 4, 9, 12, 10, tzinfo=timezone.utc)
 
 
@@ -33,9 +36,13 @@ def app(image_service):
 
 @pytest.fixture
 def client(app):
-    """Create TestClient for the app."""
-    with patch(
-        "app.api.api.get_next_image_pull_time", return_value=_NEXT_PULL_TIME
+    """Create TestClient for the app, with time fixed at _NOW."""
+    with (
+        patch(
+            "app.api.api.get_next_image_pull_time",
+            return_value=_NEXT_PULL_TIME,
+        ),
+        patch("app.api.api.utc_now", return_value=_NOW),
     ):
         yield TestClient(app, base_url="http://zoe.local:8000")
 
@@ -119,20 +126,17 @@ def test_eink_pull_only_accepts_get(client, image_service):
     assert response.status_code == 405
 
 
+@pytest.mark.parametrize(
+    "has_image", [True, False], ids=["with_image", "without_image"]
+)
 def test_eink_pull_logs_when_the_frame_will_next_request_an_image(
-    client, image_service, caplog
+    client, image_service, caplog, has_image
 ) -> None:
-    # Arrange: next pull is 12:10 UTC (14:10 in Zurich), now is 10:25 UTC
-    _set_latest_image(image_service, _metadata())
+    # Arrange
+    _set_latest_image(image_service, _metadata() if has_image else None)
 
     # Act
-    with (
-        patch(
-            "app.api.api.utc_now",
-            return_value=datetime(2026, 4, 9, 10, 25, tzinfo=timezone.utc),
-        ),
-        caplog.at_level(logging.INFO, logger="app.api.api"),
-    ):
+    with caplog.at_level(logging.INFO, logger="app.api.api"):
         client.get("/api/images/eink_pull")
 
     # Assert
@@ -140,22 +144,6 @@ def test_eink_pull_logs_when_the_frame_will_next_request_an_image(
         "eInk frame will next request an image at 2026-04-09 14:10 CEST "
         "(in 1h 45m)."
     ) in caplog.text
-
-
-def test_eink_pull_logs_next_request_even_without_an_image(
-    client, image_service, caplog
-) -> None:
-    # Arrange
-    _set_latest_image(image_service, None)
-
-    # Act
-    with caplog.at_level(logging.INFO, logger="app.api.api"):
-        client.get("/api/images/eink_pull")
-
-    # Assert
-    assert "eInk frame will next request an image at 2026-04-09 14:10" in (
-        caplog.text
-    )
 
 
 def test_format_duration() -> None:
