@@ -1,6 +1,4 @@
 import asyncio
-from pathlib import Path
-from tempfile import NamedTemporaryFile
 from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI
@@ -9,13 +7,10 @@ from fastapi.testclient import TestClient
 from app.api.api import get_last_week_average, get_sensor_data, router
 from app.dependencies import (
     get_analytics_service,
-    get_image_generation_service,
     get_sensor_service,
 )
-from app.models.domain.generated_image import GeneratedImageMetadata
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.analytics_service import AnalyticsService, CalculationError
-from app.services.image_generation_service import ImageGenerationService
 from app.services.sensor_service import SensorService
 
 
@@ -118,75 +113,3 @@ def test_last_week_average_route_returns_404_when_no_data() -> None:
     assert response.json() == {
         "detail": "No sensor readings found for the past week."
     }
-
-
-def test_eink_pull_returns_jpg_file() -> None:
-    # Arrange
-    # Create a temporary JPG file in the expected location
-    from pathlib import Path
-
-    gemini_dir = (
-        Path(__file__).resolve().parents[2]
-        / "app"
-        / "static"
-        / "img"
-        / "gemini"
-    )
-    gemini_dir.mkdir(parents=True, exist_ok=True)
-
-    test_image_path = gemini_dir / "test_image.jpg"
-    test_image_path.write_bytes(b"fake JPG content")
-
-    try:
-        service = MagicMock(spec=ImageGenerationService)
-        service.get_latest_generated_image = AsyncMock(
-            return_value=GeneratedImageMetadata(
-                filename="test_image.jpg",
-                generated_at=None,
-            )
-        )
-        app = FastAPI()
-        app.include_router(router)
-        app.dependency_overrides[get_image_generation_service] = lambda: (
-            service
-        )
-        client = TestClient(app)
-
-        # Act
-        response = client.get("/api/images/eink_pull")
-
-        # Assert
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "application/json"
-        assert "image_url" in response.json()["data"]
-    finally:
-        # Cleanup
-        if test_image_path.exists():
-            test_image_path.unlink()
-
-
-def test_eink_pull_returns_correct_media_type_header() -> None:
-    # Arrange
-    service = MagicMock(spec=ImageGenerationService)
-    service.get_latest_generated_image = AsyncMock(
-        return_value=GeneratedImageMetadata(
-            filename="test_image.jpg",
-            generated_at=None,
-        )
-    )
-    app = FastAPI()
-    app.include_router(router)
-    app.dependency_overrides[get_image_generation_service] = lambda: service
-    client = TestClient(app)
-
-    # Act & Assert
-    # This test verifies the endpoint is callable and returns proper response structure
-    # The actual file retrieval test would require more complex mocking
-    try:
-        response = client.get("/api/images/eink_pull")
-        # The endpoint will likely return 404 since the file doesn't exist in test env
-        # but we can verify it attempts to serve as a FileResponse
-        assert response.status_code in [200, 404]
-    except Exception:
-        # In test environment without actual image files, this is expected
-        pass

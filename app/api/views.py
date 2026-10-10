@@ -6,12 +6,12 @@ from fastapi.templating import Jinja2Templates
 
 from app.dependencies import (
     get_analytics_service,
-    get_image_generation_service,
+    get_generated_image_service,
     get_sensor_service,
 )
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.analytics_service import AnalyticsService, TimeGroup
-from app.services.image_generation_service import ImageGenerationService
+from app.services.generated_image_service import GeneratedImageService
 from app.services.sensor_service import (
     LIGHT_LOW_LUX_THRESHOLD,
     MOISTURE_THRESHOLD,
@@ -31,18 +31,20 @@ async def load_homepage(
     analytics_service: AnalyticsService = Depends(
         get_analytics_service,
     ),
-    image_generation_service: ImageGenerationService = Depends(
-        get_image_generation_service,
+    generated_image_service: GeneratedImageService = Depends(
+        get_generated_image_service,
     ),
 ) -> HTMLResponse:
     generated_image_url = None
     generated_image_generated_at = None
     generated_image_snapshot = None
     generated_image = (
-        await image_generation_service.get_latest_generated_image()
+        await generated_image_service.get_latest_generated_image()
     )
     if generated_image is not None:
-        generated_image_url = f"/static/img/gemini/{generated_image.filename}"
+        generated_image_url = generated_image_service.generated_image_url_path(
+            generated_image.filename
+        )
         generated_image_generated_at = generated_image.generated_at.strftime(
             "%Y-%m-%d:%H:%M"
         )

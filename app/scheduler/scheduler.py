@@ -1,6 +1,8 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta, timezone
 import logging
+from typing import Optional
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -19,6 +21,24 @@ IMAGE_GEN_CRON_SCHEDULE = [
     18,  # Evening, hopefully home (or out, living life)
     22,  # Night time, maybe one last image before bed
 ]
+SCHEDULE_TIMEZONE = ZoneInfo("Europe/Zurich")
+# Give the generation job time to finish before the display pulls
+PULL_BUFFER_MINUTES = 10
+
+
+def get_next_image_pull_time(now: Optional[datetime] = None) -> datetime:
+    """Return the next time (UTC) a freshly generated image will be ready."""
+    now = (now or datetime.now(timezone.utc)).astimezone(SCHEDULE_TIMEZONE)
+    for day_offset in (0, 1):
+        day = now.date() + timedelta(days=day_offset)
+        for hour in IMAGE_GEN_CRON_SCHEDULE:
+            # Build each slot as local wall-clock time so DST is respected
+            candidate = datetime.combine(
+                day, time(hour), tzinfo=SCHEDULE_TIMEZONE
+            ) + timedelta(minutes=PULL_BUFFER_MINUTES)
+            if candidate > now + timedelta(minutes=1):
+                return candidate.astimezone(timezone.utc)
+    raise RuntimeError("IMAGE_GEN_CRON_SCHEDULE is empty.")
 
 
 class Scheduler:
