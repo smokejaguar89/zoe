@@ -1,14 +1,11 @@
 from pathlib import Path
 from typing import Optional
 
+from app.config import GENERATED_IMAGE_DIR, OPTIMISED_IMAGE_DIR, STATIC_DIR
 from app.db.repositories.generated_image_repository import (
     GeneratedImageRepository,
 )
 from app.models.domain.generated_image import GeneratedImageMetadata
-
-STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
-GENERATED_IMAGE_DIR = STATIC_DIR / "img" / "gemini"
-OPTIMISED_IMAGE_DIR = STATIC_DIR / "img" / "gemini_optimised"
 
 
 class GeneratedImageService:

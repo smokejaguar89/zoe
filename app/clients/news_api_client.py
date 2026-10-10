@@ -1,7 +1,7 @@
-import httpx
-import os
-
 from enum import Enum
+from typing import Optional
+
+import httpx
 
 
 class NewsApiClientError(Exception):
@@ -19,8 +19,8 @@ class NewsCategory(Enum):
 
 
 class NewsApiClient:
-    def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv("NEWS_API_KEY")
+    def __init__(self, api_key: Optional[str]):
+        self.api_key = api_key
         if not self.api_key:
             raise NewsApiClientError("NEWS_API_KEY is not configured.")
 

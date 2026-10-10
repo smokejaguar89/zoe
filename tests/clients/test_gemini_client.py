@@ -27,7 +27,7 @@ def _make_empty_response() -> MagicMock:
 
 def test_generate_image_returns_decoded_bytes() -> None:
     # Arrange
-    client = GeminiClient(api_key="test-key")
+    client = GeminiClient(api_key="test-key", model="test-model")
     mock_genai_client = MagicMock()
     mock_genai_client.aio.models.generate_content = AsyncMock(
         return_value=_make_response_with_image()
@@ -53,7 +53,7 @@ def test_generate_image_returns_decoded_bytes() -> None:
 
 def test_generate_image_retries_on_empty_response() -> None:
     # Arrange
-    client = GeminiClient(api_key="test-key")
+    client = GeminiClient(api_key="test-key", model="test-model")
     mock_genai_client = MagicMock()
     mock_genai_client.aio.models.generate_content = AsyncMock(
         side_effect=[
@@ -82,7 +82,7 @@ def test_generate_image_retries_on_empty_response() -> None:
 
 def test_generate_image_raises_after_max_attempts() -> None:
     # Arrange
-    client = GeminiClient(api_key="test-key")
+    client = GeminiClient(api_key="test-key", model="test-model")
     mock_genai_client = MagicMock()
     mock_genai_client.aio.models.generate_content = AsyncMock(
         return_value=_make_empty_response()
@@ -112,8 +112,7 @@ def test_generate_image_raises_after_max_attempts() -> None:
 
 def test_generate_image_raises_when_no_api_key() -> None:
     # Arrange
-    client = GeminiClient(api_key=None)
-    client.api_key = None
+    client = GeminiClient(api_key=None, model="test-model")
 
     # Act
     with pytest.raises(GeminiClientError) as error:
@@ -151,7 +150,8 @@ def _generate(client, response, prompt="generate a sunflower"):
 def test_generate_image_sends_base_image_with_its_mime_type() -> None:
     # Act
     _, generate_content = _generate(
-        GeminiClient(api_key="test-key"), _make_response_with_image()
+        GeminiClient(api_key="test-key", model="test-model"),
+        _make_response_with_image(),
     )
 
     # Assert
@@ -172,7 +172,9 @@ def test_generate_image_does_not_log_image_data(caplog) -> None:
 
     # Act
     with caplog.at_level(logging.DEBUG, logger="app.clients.gemini_client"):
-        _generate(GeminiClient(api_key="test-key"), response)
+        _generate(
+            GeminiClient(api_key="test-key", model="test-model"), response
+        )
 
     # Assert
     assert "IMAGE-BYTES" not in caplog.text
@@ -203,7 +205,10 @@ def test_generate_image_logs_text_reply_when_no_image(caplog) -> None:
     # Act
     with caplog.at_level(logging.WARNING, logger="app.clients.gemini_client"):
         with pytest.raises(GeminiClientError):
-            _generate(GeminiClient(api_key="test-key"), text_reply)
+            _generate(
+                GeminiClient(api_key="test-key", model="test-model"),
+                text_reply,
+            )
 
     # Assert
     assert "finish_reason=STOP" in caplog.text

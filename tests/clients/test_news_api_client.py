@@ -12,10 +12,7 @@ from app.clients.news_api_client import (
 
 def test_news_api_client_raises_when_no_api_key() -> None:
     # Act / Assert
-    with (
-        patch("app.clients.news_api_client.os.getenv", return_value=None),
-        pytest.raises(NewsApiClientError) as error,
-    ):
+    with pytest.raises(NewsApiClientError) as error:
         NewsApiClient(api_key=None)
 
     assert str(error.value) == "NEWS_API_KEY is not configured."

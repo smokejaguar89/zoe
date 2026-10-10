@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from app.config import TEMPLATES_DIR
 from app.dependencies import (
     get_analytics_service,
     get_generated_image_service,
@@ -21,7 +22,7 @@ from app.services.sensor_service import (
 )
 
 # 1. Point to the templates directory
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 router = APIRouter()
 
 

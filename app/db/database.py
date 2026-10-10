@@ -15,7 +15,6 @@ from app.models.db.sensor_snapshot_entity import (  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
-SQLITE_URL = "sqlite:///./sensors.db"
 # Bump when adding a migration to _run_migrations
 SCHEMA_VERSION = 1
 # Format SQLAlchemy uses to store datetimes in SQLite
@@ -26,7 +25,7 @@ class Database:
     """Owns the engine and the schema. Reading and writing data happens in
     the repositories in app/db/repositories."""
 
-    def __init__(self, url: str = SQLITE_URL):
+    def __init__(self, url: str):
         self.engine = create_engine(url)
 
     def init(self):

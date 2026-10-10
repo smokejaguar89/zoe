@@ -1,11 +1,8 @@
 import logging
-import os
 
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
-
-DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-image-preview"
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +16,8 @@ class GeminiClientError(Exception):
 
 
 class GeminiClient:
-    def __init__(
-        self, api_key: str | None = None, model: str = DEFAULT_GEMINI_MODEL
-    ):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+    def __init__(self, api_key: str | None, model: str):
+        self.api_key = api_key
         self.model = model
 
     async def generate_image(

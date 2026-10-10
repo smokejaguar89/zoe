@@ -12,12 +12,8 @@ from app.db.repositories.generated_image_repository import (
 from app.clients.client_protocols import ImageClient
 from app.clients.news_api_client import NewsApiClient, NewsCategory
 from app.clients.open_meteo_client import OpenMeteoClient
+from app.config import GENERATED_IMAGE_DIR, OPTIMISED_IMAGE_DIR, STATIC_DIR
 from app.models.domain.generated_image import GeneratedImageMetadata
-from app.services.generated_image_service import (
-    GENERATED_IMAGE_DIR,
-    OPTIMISED_IMAGE_DIR,
-    STATIC_DIR,
-)
 from app.services.sensor_service import SensorService
 from app.utils.clock import to_local, utc_now
 from app.utils.prompt_builder import ImagePromptBuilder, PromptContext

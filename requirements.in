@@ -27,6 +27,9 @@ sqlmodel>=0.0.14
 # Background Tasks & Scheduling
 apscheduler>=3.10.0
 
+# Configuration (.env and environment variables)
+pydantic-settings>=2.0.0
+
 # AI / Gemini
 google-genai>=1.10.0
 python-dotenv>=1.0.1

@@ -54,15 +54,22 @@ sudo apt install swig liblgpio-dev
 
 ## Configuration
 
-Create `.env` in the project root:
+Settings are defined in `app/config.py`. Set them in a `.env` file in the
+project root, or as environment variables (which take priority):
 
 ```env
 # Required for image generation
 GEMINI_API_KEY=your_key_here
+NEWS_API_KEY=your_key_here
 
-# Optional for local dev without sensors
-SENSOR_MODE=TEST
+# Optional
+GEMINI_MODEL=gemini-3.1-flash-image-preview
+DATABASE_PATH=/path/to/sensors.db   # default: sensors.db in the project root
+SENSOR_MODE=TEST                    # run with fake sensors, e.g. on a laptop
 ```
+
+Paths are resolved from the project location, so the app can be started
+from any directory.
 
 ## Run
 

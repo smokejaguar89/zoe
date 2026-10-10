@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from functools import lru_cache
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -8,6 +7,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.clients.gemini_client import GeminiClient
 from app.clients.news_api_client import NewsApiClient
 from app.clients.open_meteo_client import OpenMeteoClient
+from app.config import get_settings
 from app.db.database import Database
 from app.db.repositories.generated_image_repository import (
     GeneratedImageRepository,
@@ -30,12 +30,11 @@ from app.services.generated_image_service import GeneratedImageService
 from app.services.image_generation_service import ImageGenerationService
 from app.services.sensor_service import SensorService
 from app.utils.clock import LOCAL_TIMEZONE
-from app.utils.env import is_test_mode
 from app.utils.prompt_builder import ImagePromptBuilder
 
 # The real drivers need hardware libraries (board, adafruit_*, gpiozero)
 # that only exist on the Pi, so they're only imported outside test mode.
-TEST_MODE = is_test_mode()
+TEST_MODE = get_settings().test_mode
 if not TEST_MODE:
     from app.hardware.bme280_driver import BME280Driver
     from app.hardware.i2c_bus import I2CBus
@@ -45,7 +44,7 @@ if not TEST_MODE:
 
 @lru_cache
 def get_database() -> Database:
-    return Database()
+    return Database(url=get_settings().database_url)
 
 
 def get_sensor_snapshot_repository() -> SensorSnapshotRepository:
@@ -98,11 +97,14 @@ def get_sensor_service() -> SensorService:
 
 
 def get_gemini_client() -> GeminiClient:
-    return GeminiClient()
+    settings = get_settings()
+    return GeminiClient(
+        api_key=settings.gemini_api_key, model=settings.gemini_model
+    )
 
 
 def get_news_api_client() -> NewsApiClient:
-    return NewsApiClient(api_key=os.getenv("NEWS_API_KEY"))
+    return NewsApiClient(api_key=get_settings().news_api_key)
 
 
 def get_open_meteo_client() -> OpenMeteoClient:
