@@ -15,6 +15,7 @@ from app.services.generated_image_service import (
     STATIC_DIR,
 )
 from app.services.sensor_service import SensorService
+from app.utils.clock import to_local, utc_now
 from app.utils.prompt_builder import ImagePromptBuilder, PromptContext
 
 
@@ -56,7 +57,7 @@ class ImageGenerationService:
             self._get_news_headline(),
         )
         prompt = self.prompt_builder.build(
-            now=datetime.now(),
+            now=utc_now(),
             context=PromptContext(
                 snapshot=snapshot,
                 weather=weather,
@@ -68,7 +69,7 @@ class ImageGenerationService:
             prompt=prompt,
             base_image_bytes=base_image_bytes,
         )
-        generated_at = datetime.now()
+        generated_at = utc_now()
         output_path = self._write_generated_image(
             image_bytes, generated_at, self.generated_image_dir
         )
@@ -99,7 +100,8 @@ class ImageGenerationService:
         self, image_bytes: bytes, generated_at: datetime, path: Path
     ) -> Path:
         path.mkdir(parents=True, exist_ok=True)
-        filename = f"sunflower_{self._timestamp_to_string(generated_at)}_P.jpg"
+        timestamp = self._timestamp_to_string(to_local(generated_at))
+        filename = f"sunflower_{timestamp}_P.jpg"
         output_path = path / filename
         output_path.write_bytes(image_bytes)
         return output_path

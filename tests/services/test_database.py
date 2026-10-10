@@ -1,28 +1,31 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
+
+from sqlalchemy import inspect
 
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.db.database import Database
 from app.models.db.generated_image_entity import GeneratedImageEntity
 
 
-@patch("app.db.database.SQLModel.metadata.create_all")
-def test_init_creates_database_tables(create_all) -> None:
+def test_init_creates_database_tables(tmp_path) -> None:
     # Arrange
-    db = Database()
+    db = Database(url=f"sqlite:///{tmp_path / 'test.db'}")
 
     # Act
     db.init()
 
     # Assert
-    create_all.assert_called_once_with(db.engine)
+    assert {"sensorsnapshotentity", "generatedimageentity"} <= set(
+        inspect(db.engine).get_table_names()
+    )
 
 
 @patch("app.db.database.Session")
 def test_save_sensor_data_adds_and_commits_reading(session_cls) -> None:
     # Arrange
-    db = Database()
+    db = Database(url="sqlite://")
     snapshot = SensorSnapshot(
         temperature=24.2,
         humidity=46.5,
@@ -45,7 +48,7 @@ def test_save_sensor_data_adds_and_commits_reading(session_cls) -> None:
 @patch("app.db.database.Session")
 def test_save_generated_image_adds_and_commits_record(session_cls) -> None:
     # Arrange
-    db = Database()
+    db = Database(url="sqlite://")
     snapshot = SensorSnapshot(
         temperature=24.2,
         humidity=46.5,
@@ -61,7 +64,7 @@ def test_save_generated_image_adds_and_commits_record(session_cls) -> None:
         db.save_generated_image_metadata(
             filename="sunflower_2026-04-03:13:39.jpg",
             prompt="A prompt",
-            generated_at=datetime(2026, 4, 3, 13, 39),
+            generated_at=datetime(2026, 4, 3, 11, 39, tzinfo=timezone.utc),
             snapshot=snapshot,
         )
     )
@@ -75,12 +78,12 @@ def test_save_generated_image_adds_and_commits_record(session_cls) -> None:
 @patch("app.db.database.Session")
 def test_get_latest_generated_image_returns_record(session_cls) -> None:
     # Arrange
-    db = Database()
+    db = Database(url="sqlite://")
     entity = GeneratedImageEntity(
         filename="sunflower_2026-04-03:13:39.jpg",
         prompt="A prompt",
-        generated_at=datetime(2026, 4, 3, 13, 39),
-        snapshot_timestamp=datetime(2026, 4, 3, 13, 38),
+        generated_at=datetime(2026, 4, 3, 11, 39, tzinfo=timezone.utc),
+        snapshot_timestamp=datetime(2026, 4, 3, 11, 38, tzinfo=timezone.utc),
         temperature=24.2,
         humidity=46.5,
         light=320.0,

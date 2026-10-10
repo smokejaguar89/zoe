@@ -12,6 +12,7 @@ from app.dependencies import (
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.services.analytics_service import AnalyticsService, TimeGroup
 from app.services.generated_image_service import GeneratedImageService
+from app.utils.clock import to_local
 from app.services.sensor_service import (
     LIGHT_LOW_LUX_THRESHOLD,
     MOISTURE_THRESHOLD,
@@ -45,9 +46,9 @@ async def load_homepage(
         generated_image_url = generated_image_service.generated_image_url_path(
             generated_image.filename
         )
-        generated_image_generated_at = generated_image.generated_at.strftime(
-            "%Y-%m-%d:%H:%M"
-        )
+        generated_image_generated_at = to_local(
+            generated_image.generated_at
+        ).strftime("%Y-%m-%d:%H:%M")
         generated_image_snapshot = generated_image.sensor_snapshot
 
     # Data you want to pass to your HTML
@@ -59,7 +60,7 @@ async def load_homepage(
     for index, snapshot in enumerate(snapshots):
         timestamp = getattr(snapshot, "timestamp", None)
         time_label = (
-            timestamp.strftime("%Y-%m-%d %H:%M")
+            to_local(timestamp).strftime("%Y-%m-%d %H:%M")
             if timestamp
             else str(index + 1)
         )

@@ -3,8 +3,10 @@ from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
+from app.db.types import UTCDateTime
 from app.models.domain.generated_image import GeneratedImageMetadata
 from app.models.domain.sensor_snapshot import SensorSnapshot
+from app.utils.clock import utc_now
 
 
 class GeneratedImageEntity(SQLModel, table=True):
@@ -12,10 +14,9 @@ class GeneratedImageEntity(SQLModel, table=True):
     filename: str = Field(index=True)
     prompt: Optional[str] = None
     generated_at: datetime.datetime = Field(
-        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
-        index=True,
+        default_factory=utc_now, index=True, sa_type=UTCDateTime
     )
-    snapshot_timestamp: datetime.datetime
+    snapshot_timestamp: datetime.datetime = Field(sa_type=UTCDateTime)
     temperature: float
     humidity: float
     light: float

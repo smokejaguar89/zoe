@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 from enum import Enum
 
@@ -6,6 +6,7 @@ from fastapi.params import Depends
 
 from app.models.domain.sensor_snapshot import SensorSnapshot
 from app.db.database import Database
+from app.utils.clock import LOCAL_TIMEZONE, to_local, utc_now
 
 
 class CalculationError(Exception):
@@ -25,9 +26,10 @@ class AnalyticsService:
     async def get_last_week_snapshots(
         self, group_by: TimeGroup
     ) -> list[SensorSnapshot]:
+        now = utc_now()
         snapshots = await self.database.get_snapshots_between(
-            start_time=datetime.now() - timedelta(days=7),
-            end_time=datetime.now(),
+            start_time=now - timedelta(days=7),
+            end_time=now,
         )
         snapshots_by_hour = defaultdict(list)
 
@@ -55,15 +57,22 @@ class AnalyticsService:
         return averaged_snapshots
 
     def round_down(self, dt: datetime, delta: timedelta) -> datetime:
-        """Round down a datetime to the nearest multiple of a timedelta."""
-        seconds = (dt - datetime.min).total_seconds()
+        """Round down a UTC datetime to a multiple of delta in local time.
+
+        Rounding the local wall-clock time means days start at local
+        midnight rather than UTC midnight. Returns the bucket start in UTC.
+        """
+        local = to_local(dt).replace(tzinfo=None)
+        seconds = (local - datetime.min).total_seconds()
         rounded_seconds = seconds - (seconds % delta.total_seconds())
-        return datetime.min + timedelta(seconds=rounded_seconds)
+        rounded = datetime.min + timedelta(seconds=rounded_seconds)
+        return rounded.replace(tzinfo=LOCAL_TIMEZONE).astimezone(timezone.utc)
 
     async def get_last_week_average(self) -> SensorSnapshot:
+        now = utc_now()
         readings = await self.database.get_snapshots_between(
-            start_time=datetime.now() - timedelta(days=7),
-            end_time=datetime.now(),
+            start_time=now - timedelta(days=7),
+            end_time=now,
         )
 
         if not readings:

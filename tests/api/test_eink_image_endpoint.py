@@ -46,7 +46,7 @@ def _set_latest_image(image_service, metadata):
 def _metadata(filename="test_image.jpg"):
     return GeneratedImageMetadata(
         filename=filename,
-        generated_at=datetime.now(),
+        generated_at=datetime(2026, 4, 9, 12, 0, tzinfo=timezone.utc),
     )
 
 
