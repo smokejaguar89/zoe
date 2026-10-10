@@ -2,10 +2,11 @@ import asyncio
 
 from gpiozero import MCP3008, DigitalOutputDevice
 
+from app.hardware.driver_protocols import HardwareDriverProtocol
 from app.models.domain.soil_moisture_reading import SoilMoistureReading
 
 
-class SoilMoistureDriver:
+class SoilMoistureDriver(HardwareDriverProtocol[SoilMoistureReading]):
     # Keep this driver as a DI singleton. The power pin is shared state,
     # so concurrent callers can race on on()/off() without one instance
     # and one lock controlling access.

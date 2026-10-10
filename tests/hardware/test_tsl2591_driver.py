@@ -1,22 +1,35 @@
-from unittest.mock import MagicMock, AsyncMock
 import asyncio
+from unittest.mock import MagicMock, patch
 
+from app.hardware.i2c_bus import I2CBus
 from app.hardware.tsl2591_driver import TSL2591Driver
 from app.models.domain.tsl2591_reading import TSL2591Reading
 
 
-def test_get_reading_delegates_to_i2c_driver() -> None:
+@patch("app.hardware.tsl2591_driver.adafruit_tsl2591.TSL2591")
+def test_initialises_sensor_on_shared_bus(sensor_cls) -> None:
     # Arrange
-    expected_reading = TSL2591Reading(luminous_flux=24.3)
-    mock_i2c_driver = MagicMock()
-    mock_i2c_driver.get_tsl2591_reading = AsyncMock(
-        return_value=expected_reading
-    )
-    sensor = TSL2591Driver(i2c_driver=mock_i2c_driver)
+    raw_bus = object()
+    bus = I2CBus(bus=raw_bus)
 
     # Act
-    reading = asyncio.run(sensor.get_reading())
+    TSL2591Driver(bus=bus)
 
     # Assert
-    assert reading is expected_reading
-    mock_i2c_driver.get_tsl2591_reading.assert_called_once()
+    sensor_cls.assert_called_once_with(raw_bus)
+    bus.shutdown()
+
+
+@patch("app.hardware.tsl2591_driver.adafruit_tsl2591.TSL2591")
+def test_get_reading_maps_sensor_values(sensor_cls) -> None:
+    # Arrange
+    sensor_cls.return_value = MagicMock(lux=24.3)
+    bus = I2CBus(bus=object())
+    driver = TSL2591Driver(bus=bus)
+
+    # Act
+    reading = asyncio.run(driver.get_reading())
+
+    # Assert
+    assert reading == TSL2591Reading(luminous_flux=24.3)
+    bus.shutdown()

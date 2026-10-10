@@ -1,19 +1,14 @@
 from typing import Protocol, TypeVar
 
-try:
-    from app.hardware.i2c_driver import I2CDriver
-except NotImplementedError:
-    # Fallback to fake driver when running on non-hardware platforms (e.g., macOS)
-    from app.hardware.fake_drivers import FakeI2CDriver as I2CDriver  # type: ignore
-
-ReadingT = TypeVar("ReadingT")
+ReadingT = TypeVar("ReadingT", covariant=True)
 
 
 class HardwareDriverProtocol(Protocol[ReadingT]):
-    """Protocol for I2C-based hardware drivers."""
+    """Anything that can take a sensor reading: real or fake drivers.
+
+    Drivers subclass this to declare that they're sensor drivers. How a
+    driver is constructed (I2C bus, GPIO pins, nothing at all for fakes) is
+    up to the driver and wired in app/dependencies.py.
+    """
 
     async def get_reading(self) -> ReadingT: ...
-
-    # Note: this constructor shape is enforced by static type checking
-    # tools (e.g., mypy/pyright), not at runtime.
-    def __init__(self, i2c_driver: I2CDriver): ...

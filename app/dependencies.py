@@ -9,38 +9,30 @@ from app.clients.gemini_client import GeminiClient
 from app.clients.news_api_client import NewsApiClient
 from app.clients.open_meteo_client import OpenMeteoClient
 from app.db.database import Database
+from app.hardware.driver_protocols import HardwareDriverProtocol
 from app.hardware.fake_drivers import (
     FakeBME280Driver,
-    FakeI2CDriver,
     FakeSoilMoistureDriver,
     FakeTSL2591Driver,
 )
+from app.models.domain.bme280_reading import BME280Reading
+from app.models.domain.soil_moisture_reading import SoilMoistureReading
+from app.models.domain.tsl2591_reading import TSL2591Reading
 from app.scheduler.scheduler import MISFIRE_GRACE_SECONDS, Scheduler
 from app.services.analytics_service import AnalyticsService
 from app.services.generated_image_service import GeneratedImageService
 from app.services.image_generation_service import ImageGenerationService
 from app.services.sensor_service import SensorService
 from app.utils.clock import LOCAL_TIMEZONE
+from app.utils.env import is_test_mode
 from app.utils.prompt_builder import ImagePromptBuilder
 
-
-def is_test_mode() -> bool:
-    sensor_mode = os.getenv("SENSOR_MODE", "").strip().upper()
-    if sensor_mode == "TEST":
-        return True
-
-    test_flag = os.getenv("TEST", "").strip().lower()
-    return test_flag in {"1", "true", "yes", "on"}
-
-
-if is_test_mode():
-    I2CDriver = FakeI2CDriver
-    BME280Driver = FakeBME280Driver
-    TSL2591Driver = FakeTSL2591Driver
-    SoilMoistureDriver = FakeSoilMoistureDriver
-else:
+# The real drivers need hardware libraries (board, adafruit_*, gpiozero)
+# that only exist on the Pi, so they're only imported outside test mode.
+TEST_MODE = is_test_mode()
+if not TEST_MODE:
     from app.hardware.bme280_driver import BME280Driver
-    from app.hardware.i2c_driver import I2CDriver
+    from app.hardware.i2c_bus import I2CBus
     from app.hardware.soil_moisture_driver import SoilMoistureDriver
     from app.hardware.tsl2591_driver import TSL2591Driver
 
@@ -50,34 +42,36 @@ def get_database() -> Database:
     return Database()
 
 
-@lru_cache
-def get_i2c_bus():
-    # This is the important shared singleton for I2C-based sensors.
-    # Multiple driver instances may be created, but they all share the same
-    # dedicated I2C-thread manager.
-    return I2CDriver()
-
-
-# I2C drivers are plain factories: they do not need to be singletons now
-# that concurrency safety is enforced by the shared LockedI2CBus.
-def get_bme280_driver():
-    return BME280Driver(i2c_driver=get_i2c_bus())
-
-
-def get_tsl2591_driver():
-    return TSL2591Driver(i2c_driver=get_i2c_bus())
+# Drivers are cached so each sensor chip is initialised once and shared.
 
 
 @lru_cache
-def get_soil_moisture_driver():
-    # Soil moisture driver remains singleton-scoped because correctness
-    # depends on coordinating shared GPIO power state in one instance.
+def get_i2c_bus() -> I2CBus:
+    # One bus for all I2C sensors, so their reads run on a single thread
+    return I2CBus()
+
+
+@lru_cache
+def get_bme280_driver() -> HardwareDriverProtocol[BME280Reading]:
+    if TEST_MODE:
+        return FakeBME280Driver()
+    return BME280Driver(bus=get_i2c_bus())
+
+
+@lru_cache
+def get_tsl2591_driver() -> HardwareDriverProtocol[TSL2591Reading]:
+    if TEST_MODE:
+        return FakeTSL2591Driver()
+    return TSL2591Driver(bus=get_i2c_bus())
+
+
+@lru_cache
+def get_soil_moisture_driver() -> HardwareDriverProtocol[SoilMoistureReading]:
+    # Must be a single instance: it owns the sensor's GPIO power pin and the
+    # lock that stops reads from toggling it over each other
+    if TEST_MODE:
+        return FakeSoilMoistureDriver()
     return SoilMoistureDriver()
-
-
-def get_sparkfun_driver():
-    # Backward-compatible alias.
-    return get_soil_moisture_driver()
 
 
 def get_sensor_service() -> SensorService:

@@ -1,8 +1,15 @@
+import os
 import sys
 import types
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# Always import the real hardware drivers (against the stubs below), even if
+# the shell running pytest has SENSOR_MODE=TEST set. Tests that need test
+# mode patch app.dependencies.TEST_MODE instead.
+os.environ.pop("SENSOR_MODE", None)
+os.environ.pop("TEST", None)
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -39,3 +46,20 @@ if "adafruit_tsl2591" not in sys.modules:
 
     adafruit_tsl2591_module.TSL2591 = _StubTSL2591
     sys.modules["adafruit_tsl2591"] = adafruit_tsl2591_module
+
+if "gpiozero" not in sys.modules:
+    gpiozero_module = types.ModuleType("gpiozero")
+
+    class _StubGpioDevice:
+        def __init__(self, *args, **kwargs):
+            self.value = 0.0
+
+        def on(self):
+            pass
+
+        def off(self):
+            pass
+
+    gpiozero_module.MCP3008 = _StubGpioDevice
+    gpiozero_module.DigitalOutputDevice = _StubGpioDevice
+    sys.modules["gpiozero"] = gpiozero_module
