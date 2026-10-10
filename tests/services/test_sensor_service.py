@@ -31,6 +31,7 @@ def test_get_sensor_data_maps_sensor_readings() -> None:
         bme280=bme280,
         tsl2591=tsl2591,
         soil_moisture=soil_moisture,
+        snapshot_repository=MagicMock(),
     )
 
     # Act
@@ -45,3 +46,23 @@ def test_get_sensor_data_maps_sensor_readings() -> None:
     assert bme280.get_reading.call_count == 1
     assert tsl2591.get_reading.call_count == 1
     soil_moisture.get_reading.assert_awaited_once()
+
+
+def test_record_snapshot_saves_the_snapshot_it_takes() -> None:
+    # Arrange
+    snapshot_repository = MagicMock()
+    service = SensorService(
+        bme280=MagicMock(),
+        tsl2591=MagicMock(),
+        soil_moisture=MagicMock(),
+        snapshot_repository=snapshot_repository,
+    )
+    expected = MagicMock()
+    service.get_snapshot = AsyncMock(return_value=expected)
+
+    # Act
+    snapshot = asyncio.run(service.record_snapshot())
+
+    # Assert
+    assert snapshot is expected
+    snapshot_repository.add.assert_called_once_with(expected)

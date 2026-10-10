@@ -14,7 +14,6 @@ from app.utils.clock import utc_now
 def _make_scheduler(image_generation_service=None, apscheduler=None):
     return Scheduler(
         sensor_service=MagicMock(),
-        database=MagicMock(),
         image_generation_service=image_generation_service or MagicMock(),
         scheduler=apscheduler or MagicMock(),
     )
@@ -28,16 +27,12 @@ def _failing_image_generation_service() -> MagicMock:
     return image_generation_service
 
 
-def test_collect_data_job_gets_and_saves_snapshot() -> None:
+def test_collect_data_job_records_a_snapshot() -> None:
     # Arrange
-    snapshot = {"temperature": 22.0}
     sensor_service = MagicMock()
-    sensor_service.get_snapshot = AsyncMock(return_value=snapshot)
-    database = MagicMock()
-    database.save_snapshot = AsyncMock()
+    sensor_service.record_snapshot = AsyncMock()
     scheduler_service = Scheduler(
         sensor_service=sensor_service,
-        database=database,
         image_generation_service=MagicMock(),
         scheduler=MagicMock(),
     )
@@ -46,8 +41,7 @@ def test_collect_data_job_gets_and_saves_snapshot() -> None:
     asyncio.run(scheduler_service._collect_data_job())
 
     # Assert
-    sensor_service.get_snapshot.assert_awaited_once_with()
-    database.save_snapshot.assert_awaited_once_with(snapshot)
+    sensor_service.record_snapshot.assert_awaited_once_with()
 
 
 def test_start_adds_jobs_and_starts_scheduler() -> None:
@@ -145,18 +139,14 @@ def test_jobs_run_on_the_apps_event_loop() -> None:
     async def scenario():
         job_loops = []
 
-        async def get_snapshot():
+        async def record_snapshot():
             job_loops.append(asyncio.get_running_loop())
-            return "snapshot"
 
         sensor_service = MagicMock()
-        sensor_service.get_snapshot = get_snapshot
-        database = MagicMock()
-        database.save_snapshot = AsyncMock()
+        sensor_service.record_snapshot = record_snapshot
         # The real AsyncIOScheduler the app uses, not a mock
         scheduler_service = Scheduler(
             sensor_service=sensor_service,
-            database=database,
             image_generation_service=MagicMock(),
             scheduler=get_apscheduler(),
         )
@@ -169,14 +159,13 @@ def test_jobs_run_on_the_apps_event_loop() -> None:
                 break
             await asyncio.sleep(0.05)
         scheduler_service.stop()
-        return asyncio.get_running_loop(), job_loops, database
+        return asyncio.get_running_loop(), job_loops
 
     # Act
-    loop, job_loops, database = asyncio.run(scenario())
+    loop, job_loops = asyncio.run(scenario())
 
     # Assert
     assert job_loops == [loop]
-    database.save_snapshot.assert_awaited_once_with("snapshot")
 
 
 def test_next_image_pull_time_is_next_slot_today() -> None:

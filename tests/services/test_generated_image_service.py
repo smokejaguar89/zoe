@@ -1,34 +1,29 @@
+from unittest.mock import MagicMock
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
 
-from app.db.database import EntityNotFoundError
 from app.services.generated_image_service import GeneratedImageService
 
 
-def test_get_latest_generated_image_returns_database_value() -> None:
+def test_get_latest_generated_image_returns_repository_value() -> None:
     # Arrange
     expected = MagicMock()
-    database = MagicMock()
-    database.get_latest_generated_image_metadata = AsyncMock(
-        return_value=expected
-    )
-    service = GeneratedImageService(database=database)
+    image_repository = MagicMock()
+    image_repository.get_latest.return_value = expected
+    service = GeneratedImageService(image_repository=image_repository)
 
     # Act
     generated_image = asyncio.run(service.get_latest_generated_image())
 
     # Assert
-    assert generated_image == expected
-    database.get_latest_generated_image_metadata.assert_awaited_once_with()
+    assert generated_image is expected
+    image_repository.get_latest.assert_called_once_with()
 
 
-def test_get_latest_generated_image_returns_none_when_database_empty() -> None:
+def test_get_latest_generated_image_returns_none_when_no_images() -> None:
     # Arrange
-    database = MagicMock()
-    database.get_latest_generated_image_metadata = AsyncMock(
-        side_effect=EntityNotFoundError("No generated image found.")
-    )
-    service = GeneratedImageService(database=database)
+    image_repository = MagicMock()
+    image_repository.get_latest.return_value = None
+    service = GeneratedImageService(image_repository=image_repository)
 
     # Act
     generated_image = asyncio.run(service.get_latest_generated_image())
@@ -39,7 +34,7 @@ def test_get_latest_generated_image_returns_none_when_database_empty() -> None:
 
 def test_image_url_paths_point_at_static_image_dirs() -> None:
     # Arrange
-    service = GeneratedImageService(database=MagicMock())
+    service = GeneratedImageService(image_repository=MagicMock())
 
     # Act & Assert
     assert (

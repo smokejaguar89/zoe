@@ -2,10 +2,10 @@ from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 from enum import Enum
 
-from fastapi.params import Depends
-
+from app.db.repositories.sensor_snapshot_repository import (
+    SensorSnapshotRepository,
+)
 from app.models.domain.sensor_snapshot import SensorSnapshot
-from app.db.database import Database
 from app.utils.clock import LOCAL_TIMEZONE, to_local, utc_now
 
 
@@ -20,14 +20,14 @@ class TimeGroup(Enum):
 
 
 class AnalyticsService:
-    def __init__(self, database=Depends(Database)):
-        self.database = database
+    def __init__(self, snapshot_repository: SensorSnapshotRepository):
+        self.snapshot_repository = snapshot_repository
 
     async def get_last_week_snapshots(
         self, group_by: TimeGroup
     ) -> list[SensorSnapshot]:
         now = utc_now()
-        snapshots = await self.database.get_snapshots_between(
+        snapshots = self.snapshot_repository.list_between(
             start_time=now - timedelta(days=7),
             end_time=now,
         )
@@ -70,7 +70,7 @@ class AnalyticsService:
 
     async def get_last_week_average(self) -> SensorSnapshot:
         now = utc_now()
-        readings = await self.database.get_snapshots_between(
+        readings = self.snapshot_repository.list_between(
             start_time=now - timedelta(days=7),
             end_time=now,
         )

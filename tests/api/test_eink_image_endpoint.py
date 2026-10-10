@@ -15,8 +15,8 @@ _NEXT_PULL_TIME = datetime(2026, 4, 9, 12, 10, tzinfo=timezone.utc)
 
 @pytest.fixture
 def image_service():
-    """Real GeneratedImageService backed by a mocked database."""
-    return GeneratedImageService(database=MagicMock())
+    """Real GeneratedImageService backed by a mocked repository."""
+    return GeneratedImageService(image_repository=MagicMock())
 
 
 @pytest.fixture
