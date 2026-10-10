@@ -1,10 +1,11 @@
 from adafruit_bme280 import basic as adafruit_bme280
 
+from app.hardware.driver_protocols import HardwareDriverProtocol
 from app.hardware.i2c_bus import I2CBus
 from app.models.domain.bme280_reading import BME280Reading
 
 
-class BME280Driver:
+class BME280Driver(HardwareDriverProtocol[BME280Reading]):
     """Temperature, humidity and pressure sensor on the shared I2C bus."""
 
     ADDRESS = 0x76

@@ -33,15 +33,16 @@ def clear_provider_caches():
 
 
 @pytest.fixture
+def test_mode(monkeypatch):
+    monkeypatch.setattr(dependencies, "TEST_MODE", True)
+
+
+@pytest.fixture
 def hardware_mode(monkeypatch):
-    monkeypatch.delenv("SENSOR_MODE", raising=False)
-    monkeypatch.delenv("TEST", raising=False)
+    monkeypatch.setattr(dependencies, "TEST_MODE", False)
 
 
-def test_dependency_providers_use_fake_drivers_in_test_mode(monkeypatch):
-    # Arrange
-    monkeypatch.setenv("SENSOR_MODE", "TEST")
-
+def test_dependency_providers_use_fake_drivers_in_test_mode(test_mode):
     # Act
     bme280 = dependencies.get_bme280_driver()
     tsl2591 = dependencies.get_tsl2591_driver()
@@ -53,12 +54,9 @@ def test_dependency_providers_use_fake_drivers_in_test_mode(monkeypatch):
     assert isinstance(soil_moisture, FakeSoilMoistureDriver)
 
 
-def test_test_mode_does_not_touch_the_i2c_bus(monkeypatch):
-    # Arrange
-    monkeypatch.setenv("SENSOR_MODE", "TEST")
-
+def test_test_mode_does_not_touch_the_i2c_bus(test_mode):
     # Act
-    with patch("app.hardware.i2c_bus.I2CBus") as bus_cls:
+    with patch("app.dependencies.I2CBus") as bus_cls:
         dependencies.get_bme280_driver()
         dependencies.get_tsl2591_driver()
 
@@ -66,9 +64,9 @@ def test_test_mode_does_not_touch_the_i2c_bus(monkeypatch):
     bus_cls.assert_not_called()
 
 
-@patch("app.hardware.tsl2591_driver.TSL2591Driver")
-@patch("app.hardware.bme280_driver.BME280Driver")
-@patch("app.hardware.i2c_bus.I2CBus")
+@patch("app.dependencies.TSL2591Driver")
+@patch("app.dependencies.BME280Driver")
+@patch("app.dependencies.I2CBus")
 def test_i2c_drivers_share_one_bus(
     bus_cls, bme280_cls, tsl2591_cls, hardware_mode
 ):
@@ -82,8 +80,8 @@ def test_i2c_drivers_share_one_bus(
     tsl2591_cls.assert_called_once_with(bus=bus_cls.return_value)
 
 
-@patch("app.hardware.bme280_driver.BME280Driver")
-@patch("app.hardware.i2c_bus.I2CBus")
+@patch("app.dependencies.BME280Driver")
+@patch("app.dependencies.I2CBus")
 def test_i2c_drivers_are_initialised_once(bus_cls, bme280_cls, hardware_mode):
     # Act
     first = dependencies.get_bme280_driver()
@@ -95,7 +93,7 @@ def test_i2c_drivers_are_initialised_once(bus_cls, bme280_cls, hardware_mode):
 
 
 @patch(
-    "app.hardware.soil_moisture_driver.SoilMoistureDriver",
+    "app.dependencies.SoilMoistureDriver",
     return_value=sentinel.soil_moisture_driver,
 )
 def test_soil_moisture_driver_provider_is_singleton(

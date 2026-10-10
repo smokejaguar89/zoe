@@ -1,8 +1,15 @@
+import os
 import sys
 import types
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# Always import the real hardware drivers (against the stubs below), even if
+# the shell running pytest has SENSOR_MODE=TEST set. Tests that need test
+# mode patch app.dependencies.TEST_MODE instead.
+os.environ.pop("SENSOR_MODE", None)
+os.environ.pop("TEST", None)
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 

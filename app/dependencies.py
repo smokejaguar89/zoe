@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import TYPE_CHECKING
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -25,19 +24,17 @@ from app.services.generated_image_service import GeneratedImageService
 from app.services.image_generation_service import ImageGenerationService
 from app.services.sensor_service import SensorService
 from app.utils.clock import LOCAL_TIMEZONE
+from app.utils.env import is_test_mode
 from app.utils.prompt_builder import ImagePromptBuilder
 
-if TYPE_CHECKING:
+# The real drivers need hardware libraries (board, adafruit_*, gpiozero)
+# that only exist on the Pi, so they're only imported outside test mode.
+TEST_MODE = is_test_mode()
+if not TEST_MODE:
+    from app.hardware.bme280_driver import BME280Driver
     from app.hardware.i2c_bus import I2CBus
-
-
-def is_test_mode() -> bool:
-    sensor_mode = os.getenv("SENSOR_MODE", "").strip().upper()
-    if sensor_mode == "TEST":
-        return True
-
-    test_flag = os.getenv("TEST", "").strip().lower()
-    return test_flag in {"1", "true", "yes", "on"}
+    from app.hardware.soil_moisture_driver import SoilMoistureDriver
+    from app.hardware.tsl2591_driver import TSL2591Driver
 
 
 @lru_cache
@@ -45,34 +42,26 @@ def get_database() -> Database:
     return Database()
 
 
-# Hardware modules are imported inside the providers below so that only the
-# Pi, outside test mode, ever needs the hardware libraries installed.
 # Drivers are cached so each sensor chip is initialised once and shared.
 
 
 @lru_cache
 def get_i2c_bus() -> I2CBus:
     # One bus for all I2C sensors, so their reads run on a single thread
-    from app.hardware.i2c_bus import I2CBus
-
     return I2CBus()
 
 
 @lru_cache
 def get_bme280_driver() -> HardwareDriverProtocol[BME280Reading]:
-    if is_test_mode():
+    if TEST_MODE:
         return FakeBME280Driver()
-    from app.hardware.bme280_driver import BME280Driver
-
     return BME280Driver(bus=get_i2c_bus())
 
 
 @lru_cache
 def get_tsl2591_driver() -> HardwareDriverProtocol[TSL2591Reading]:
-    if is_test_mode():
+    if TEST_MODE:
         return FakeTSL2591Driver()
-    from app.hardware.tsl2591_driver import TSL2591Driver
-
     return TSL2591Driver(bus=get_i2c_bus())
 
 
@@ -80,10 +69,8 @@ def get_tsl2591_driver() -> HardwareDriverProtocol[TSL2591Reading]:
 def get_soil_moisture_driver() -> HardwareDriverProtocol[SoilMoistureReading]:
     # Must be a single instance: it owns the sensor's GPIO power pin and the
     # lock that stops reads from toggling it over each other
-    if is_test_mode():
+    if TEST_MODE:
         return FakeSoilMoistureDriver()
-    from app.hardware.soil_moisture_driver import SoilMoistureDriver
-
     return SoilMoistureDriver()
 
 
