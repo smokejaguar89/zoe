@@ -73,9 +73,12 @@ class ImageGenerationService:
         output_path = self._write_generated_image(
             image_bytes, generated_at, self.generated_image_dir
         )
-        # For e-ink display
-        self._write_optimised_image(
-            output_path, self.optimised_image_dir / output_path.name
+        # For e-ink display. Resizing is CPU-bound, so keep it off the event
+        # loop that also serves API requests.
+        await asyncio.to_thread(
+            self._write_optimised_image,
+            output_path,
+            self.optimised_image_dir / output_path.name,
         )
         await self.database.save_generated_image_metadata(
             filename=output_path.name,

@@ -1,20 +1,20 @@
-import asyncio
 from datetime import datetime, time, timedelta, timezone
 import logging
 from typing import Optional
 
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.db.database import Database
 from app.services.image_generation_service import ImageGenerationService
 from app.services.sensor_service import SensorService
 from app.utils.clock import LOCAL_TIMEZONE, to_local, utc_now
 
-# Explicit timezone so cron hours are Zurich time whatever the Pi's system
-# timezone is set to
-scheduler = BackgroundScheduler(timezone=LOCAL_TIMEZONE)
 logger = logging.getLogger(__name__)
 RETRY_DELAY_MINUTES = 5
+# Per scheduled slot, including the first try. Each attempt can make up to
+# GeminiClient's MAX_ATTEMPTS calls.
+MAX_IMAGE_GENERATION_ATTEMPTS = 3
+MISFIRE_GRACE_SECONDS = 5 * 60
 RETRY_JOB_ID = "generate_image_retry"
 IMAGE_GEN_CRON_SCHEDULE = [
     6,  # Clara awake
@@ -48,58 +48,73 @@ class Scheduler:
         sensor_service: SensorService,
         database: Database,
         image_generation_service: ImageGenerationService,
+        scheduler: Optional[AsyncIOScheduler] = None,
     ):
         self.sensor_service = sensor_service
         self.database = database
         self.image_generation_service = image_generation_service
+        # Jobs run on the app's event loop, alongside API requests, so every
+        # hardware read happens on one loop and the drivers' asyncio locks
+        # actually serialise access. The timezone is explicit so cron hours
+        # are Zurich time whatever the Pi's system timezone is set to.
+        self._scheduler = scheduler or AsyncIOScheduler(
+            timezone=LOCAL_TIMEZONE,
+            # Run a job that's slightly late (e.g. the loop was busy)
+            # rather than skipping it after APScheduler's default 1s
+            job_defaults={"misfire_grace_time": MISFIRE_GRACE_SECONDS},
+        )
 
     async def _collect_data_job(self):
         logger.info("Running data collection job...")
         snapshot = await self.sensor_service.get_snapshot()
         await self.database.save_snapshot(snapshot)
 
-    def _run_collect_data_job(self):
-        asyncio.run(self._collect_data_job())
-
-    async def _generate_image_job(self):
-        logger.info("Running image generation job...")
-        await self.image_generation_service.generate_and_save_image()
-
-    def _run_generate_image_job(self):
+    async def _generate_image_job(self, attempt: int = 1):
+        logger.info(
+            "Running image generation job (attempt %d/%d)...",
+            attempt,
+            MAX_IMAGE_GENERATION_ATTEMPTS,
+        )
         try:
-            asyncio.run(self._generate_image_job())
-        # TODO: add maximum retries to prevent race condition and also going
-        #       totally broke.
+            await self.image_generation_service.generate_and_save_image()
         except Exception:
+            if attempt >= MAX_IMAGE_GENERATION_ATTEMPTS:
+                logger.exception(
+                    "Image generation failed after %d attempts. Giving up "
+                    "until the next scheduled slot.",
+                    attempt,
+                )
+                return
             logger.exception(
-                "Image generation job failed. Scheduling retry in %d minutes.",
+                "Image generation failed. Retrying in %d minutes.",
                 RETRY_DELAY_MINUTES,
             )
-            self._schedule_generate_image_retry()
+            self._schedule_generate_image_retry(attempt + 1)
 
-    def _schedule_generate_image_retry(self):
-        retry_at = utc_now() + timedelta(minutes=RETRY_DELAY_MINUTES)
-        scheduler.add_job(
-            self._run_generate_image_job,
+    def _schedule_generate_image_retry(self, attempt: int):
+        self._scheduler.add_job(
+            self._generate_image_job,
             "date",
-            run_date=retry_at,
+            run_date=utc_now() + timedelta(minutes=RETRY_DELAY_MINUTES),
+            kwargs={"attempt": attempt},
             id=RETRY_JOB_ID,
             replace_existing=True,
         )
 
     def start(self):
-        scheduler.add_job(self._run_collect_data_job, "interval", minutes=15)
+        """Start the scheduler. Must be called from the running event loop."""
+        self._scheduler.add_job(self._collect_data_job, "interval", minutes=15)
         # For testing
-        # scheduler.add_job(self._run_generate_image_job, "interval",
-        #                   minutes=1)
+        # self._scheduler.add_job(self._generate_image_job, "interval",
+        #                         minutes=1)
 
-        scheduler.add_job(
-            self._run_generate_image_job,
+        self._scheduler.add_job(
+            self._generate_image_job,
             "cron",
             hour=",".join(map(str, IMAGE_GEN_CRON_SCHEDULE)),
             minute=0,
         )
-        scheduler.start()
+        self._scheduler.start()
 
     def stop(self):
-        scheduler.shutdown()
+        self._scheduler.shutdown(wait=False)
