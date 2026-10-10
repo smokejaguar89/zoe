@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
+from app.dependencies import get_apscheduler
 from app.scheduler.scheduler import (
     MAX_IMAGE_GENERATION_ATTEMPTS,
     Scheduler,
@@ -152,11 +153,12 @@ def test_jobs_run_on_the_apps_event_loop() -> None:
         sensor_service.get_snapshot = get_snapshot
         database = MagicMock()
         database.save_snapshot = AsyncMock()
-        # A real AsyncIOScheduler, not a mock
+        # The real AsyncIOScheduler the app uses, not a mock
         scheduler_service = Scheduler(
             sensor_service=sensor_service,
             database=database,
             image_generation_service=MagicMock(),
+            scheduler=get_apscheduler(),
         )
         scheduler_service.start()
         scheduler_service._scheduler.add_job(

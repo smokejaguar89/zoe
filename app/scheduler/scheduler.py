@@ -48,21 +48,15 @@ class Scheduler:
         sensor_service: SensorService,
         database: Database,
         image_generation_service: ImageGenerationService,
-        scheduler: Optional[AsyncIOScheduler] = None,
+        scheduler: AsyncIOScheduler,
     ):
         self.sensor_service = sensor_service
         self.database = database
         self.image_generation_service = image_generation_service
         # Jobs run on the app's event loop, alongside API requests, so every
         # hardware read happens on one loop and the drivers' asyncio locks
-        # actually serialise access. The timezone is explicit so cron hours
-        # are Zurich time whatever the Pi's system timezone is set to.
-        self._scheduler = scheduler or AsyncIOScheduler(
-            timezone=LOCAL_TIMEZONE,
-            # Run a job that's slightly late (e.g. the loop was busy)
-            # rather than skipping it after APScheduler's default 1s
-            job_defaults={"misfire_grace_time": MISFIRE_GRACE_SECONDS},
-        )
+        # actually serialise access.
+        self._scheduler = scheduler
 
     async def _collect_data_job(self):
         logger.info("Running data collection job...")

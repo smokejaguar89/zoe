@@ -2,6 +2,8 @@ import importlib
 from unittest.mock import patch, sentinel
 
 from app import dependencies
+from app.scheduler.scheduler import MISFIRE_GRACE_SECONDS
+from app.utils.clock import LOCAL_TIMEZONE
 from app.hardware.fake_drivers import (
     FakeBME280Driver,
     FakeI2CDriver,
@@ -91,3 +93,14 @@ def test_soil_moisture_driver_provider_is_singleton(
         assert first is second
         assert first is sentinel.soil_moisture_driver
         mock_soil_moisture_driver.assert_called_once_with()
+
+
+def test_apscheduler_uses_zurich_time_and_misfire_grace() -> None:
+    # Act
+    scheduler = dependencies.get_apscheduler()
+
+    # Assert
+    assert scheduler.timezone == LOCAL_TIMEZONE
+    assert scheduler._job_defaults["misfire_grace_time"] == (
+        MISFIRE_GRACE_SECONDS
+    )

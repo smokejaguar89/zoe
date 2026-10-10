@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from app.clients.gemini_client import GeminiClient
 from app.clients.news_api_client import NewsApiClient
 from app.clients.open_meteo_client import OpenMeteoClient
@@ -13,11 +15,12 @@ from app.hardware.fake_drivers import (
     FakeSoilMoistureDriver,
     FakeTSL2591Driver,
 )
-from app.scheduler.scheduler import Scheduler
+from app.scheduler.scheduler import MISFIRE_GRACE_SECONDS, Scheduler
 from app.services.analytics_service import AnalyticsService
 from app.services.generated_image_service import GeneratedImageService
 from app.services.image_generation_service import ImageGenerationService
 from app.services.sensor_service import SensorService
+from app.utils.clock import LOCAL_TIMEZONE
 from app.utils.prompt_builder import ImagePromptBuilder
 
 
@@ -120,10 +123,22 @@ def get_analytics_service() -> AnalyticsService:
     return AnalyticsService(database=get_database())
 
 
+def get_apscheduler() -> AsyncIOScheduler:
+    return AsyncIOScheduler(
+        # Explicit so cron hours are Zurich time whatever the Pi's system
+        # timezone is set to
+        timezone=LOCAL_TIMEZONE,
+        # Run a job that's slightly late (e.g. the loop was busy) rather
+        # than skipping it after APScheduler's default 1s
+        job_defaults={"misfire_grace_time": MISFIRE_GRACE_SECONDS},
+    )
+
+
 @lru_cache
 def get_scheduler() -> Scheduler:
     return Scheduler(
         sensor_service=get_sensor_service(),
         database=get_database(),
         image_generation_service=get_image_generation_service(),
+        scheduler=get_apscheduler(),
     )
