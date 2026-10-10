@@ -37,6 +37,15 @@ For Raspberry Pi / Linux hardware installs, also run:
 pip install -r requirements-hardware.txt
 ```
 
+`requirements.txt` is a lock file with every package pinned, so the Pi and
+your laptop run the same versions. To add or upgrade a dependency, edit
+`requirements.in` and regenerate the lock file with
+[uv](https://docs.astral.sh/uv/) (add `--upgrade` to take new versions):
+
+```bash
+uv pip compile requirements.in --universal --python-version 3.10 -o requirements.txt
+```
+
 If `lgpio` fails on Pi, install system packages:
 ```bash
 sudo apt update
