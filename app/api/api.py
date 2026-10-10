@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import logging
 from fastapi import (
     APIRouter,
@@ -30,6 +31,7 @@ from app.services.analytics_service import (
 from app.services.generated_image_service import GeneratedImageService
 from app.services.sensor_service import SensorService
 from app.scheduler.scheduler import get_next_image_pull_time
+from app.utils.clock import to_local, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +93,9 @@ async def get_eink_pull(
     ),
 ):
     metadata = await generated_image_service.get_latest_generated_image()
-    next_cron_time = get_next_image_pull_time().strftime(EINK_TIME_FORMAT)
+    next_pull_time = get_next_image_pull_time()
+    next_cron_time = next_pull_time.strftime(EINK_TIME_FORMAT)
+    _log_next_eink_pull(next_pull_time)
 
     if metadata is None:
         logger.info("No image available yet for eInk display.")
@@ -120,3 +124,19 @@ async def get_eink_pull(
             image_url=image_url,
         ),
     )
+
+
+def _log_next_eink_pull(next_pull_time: datetime) -> None:
+    # The frame sleeps until the next_cron_time we send it, so this is when
+    # it will next ask for an image
+    logger.info(
+        "eInk frame will next request an image at %s (in %s).",
+        to_local(next_pull_time).strftime("%Y-%m-%d %H:%M %Z"),
+        _format_duration(next_pull_time - utc_now()),
+    )
+
+
+def _format_duration(duration: timedelta) -> str:
+    minutes = max(0, round(duration.total_seconds() / 60))
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}h {minutes:02d}m" if hours else f"{minutes}m"

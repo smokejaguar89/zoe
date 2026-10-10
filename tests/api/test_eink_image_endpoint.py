@@ -1,11 +1,12 @@
-from datetime import datetime, timezone
+import logging
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.api import router
+from app.api.api import _format_duration, router
 from app.dependencies import get_generated_image_service
 from app.models.domain.generated_image import GeneratedImageMetadata
 from app.services.generated_image_service import GeneratedImageService
@@ -116,3 +117,48 @@ def test_eink_pull_only_accepts_get(client, image_service):
 
     # Assert
     assert response.status_code == 405
+
+
+def test_eink_pull_logs_when_the_frame_will_next_request_an_image(
+    client, image_service, caplog
+) -> None:
+    # Arrange: next pull is 12:10 UTC (14:10 in Zurich), now is 10:25 UTC
+    _set_latest_image(image_service, _metadata())
+
+    # Act
+    with (
+        patch(
+            "app.api.api.utc_now",
+            return_value=datetime(2026, 4, 9, 10, 25, tzinfo=timezone.utc),
+        ),
+        caplog.at_level(logging.INFO, logger="app.api.api"),
+    ):
+        client.get("/api/images/eink_pull")
+
+    # Assert
+    assert (
+        "eInk frame will next request an image at 2026-04-09 14:10 CEST "
+        "(in 1h 45m)."
+    ) in caplog.text
+
+
+def test_eink_pull_logs_next_request_even_without_an_image(
+    client, image_service, caplog
+) -> None:
+    # Arrange
+    _set_latest_image(image_service, None)
+
+    # Act
+    with caplog.at_level(logging.INFO, logger="app.api.api"):
+        client.get("/api/images/eink_pull")
+
+    # Assert
+    assert "eInk frame will next request an image at 2026-04-09 14:10" in (
+        caplog.text
+    )
+
+
+def test_format_duration() -> None:
+    assert _format_duration(timedelta(minutes=9, seconds=40)) == "10m"
+    assert _format_duration(timedelta(hours=3, minutes=5)) == "3h 05m"
+    assert _format_duration(timedelta(minutes=-2)) == "0m"
