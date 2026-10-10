@@ -1,4 +1,5 @@
 import asyncio
+import mimetypes
 import random
 from datetime import datetime
 import logging
@@ -31,6 +32,7 @@ class ImageGenerationServiceError(Exception):
 
 class ImageGenerationService:
     BASE_IMAGE_PATH = STATIC_DIR / "img" / "uetli_base.jpeg"
+    BASE_IMAGE_MIME_TYPE, _ = mimetypes.guess_type(BASE_IMAGE_PATH.name)
     GENERATED_IMAGE_DIR = GENERATED_IMAGE_DIR
     OPTIMISED_IMAGE_DIR = OPTIMISED_IMAGE_DIR
 
@@ -71,6 +73,7 @@ class ImageGenerationService:
         image_bytes = await self.image_client.generate_image(
             prompt=prompt,
             base_image_bytes=base_image_bytes,
+            base_image_mime_type=self.BASE_IMAGE_MIME_TYPE,
         )
         generated_at = utc_now()
         output_path = self._write_generated_image(

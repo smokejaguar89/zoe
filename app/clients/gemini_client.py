@@ -10,6 +10,8 @@ DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-image-preview"
 logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 3
+# Enough of any text reply (e.g. a refusal) to troubleshoot from the logs
+MAX_LOGGED_TEXT_CHARS = 500
 
 
 class GeminiClientError(Exception):
@@ -24,12 +26,12 @@ class GeminiClient:
         self.model = model
 
     async def generate_image(
-        self, prompt: str, base_image_bytes: bytes
+        self, prompt: str, base_image_bytes: bytes, base_image_mime_type: str
     ) -> bytes:
         if not self.api_key:
             raise GeminiClientError("GEMINI_API_KEY is not configured.")
 
-        logging.info("Generating image with prompt:" + prompt)
+        logger.info("Generating image with prompt: %s", prompt)
 
         client = genai.Client(api_key=self.api_key)
         last_error: Exception | None = None
@@ -48,7 +50,7 @@ class GeminiClient:
                         prompt,
                         types.Part.from_bytes(
                             data=base_image_bytes,
-                            mime_type="image/png",
+                            mime_type=base_image_mime_type,
                         ),
                     ],
                     config=types.GenerateContentConfig(
@@ -60,21 +62,49 @@ class GeminiClient:
                     "Gemini API request failed."
                 ) from error
 
-            logger.info("Gemini response: %s", response)
+            # Don't log the response itself: it contains the image as
+            # base64, which is megabytes per call
             image_bytes = self._extract_image_bytes(response)
             if image_bytes is not None:
+                logger.info(
+                    "Gemini returned an image (%d bytes, finish_reason=%s)",
+                    len(image_bytes),
+                    self._finish_reason(response),
+                )
                 return image_bytes
 
             last_error = GeminiClientError(
                 "Gemini response did not include an image."
             )
             logger.warning(
-                "Attempt %d/%d: no image in response, retrying...",
+                "Attempt %d/%d: no image in response (finish_reason=%s, "
+                "text=%r), retrying...",
                 attempt,
                 MAX_ATTEMPTS,
+                self._finish_reason(response),
+                self._response_text(response)[:MAX_LOGGED_TEXT_CHARS],
             )
 
         raise last_error
+
+    def _finish_reason(self, response) -> str | None:
+        candidates = getattr(response, "candidates", None) or []
+        if not candidates:
+            return None
+        finish_reason = getattr(candidates[0], "finish_reason", None)
+        return getattr(finish_reason, "name", finish_reason)
+
+    def _response_text(self, response) -> str:
+        candidates = getattr(response, "candidates", None) or []
+        content = (
+            getattr(candidates[0], "content", None) if candidates else None
+        )
+        parts = getattr(content, "parts", None) or []
+        return " ".join(
+            part.text
+            for part in parts
+            if isinstance(getattr(part, "text", None), str)
+        )
 
     def _extract_image_bytes(self, response) -> bytes | None:
         parts = getattr(response, "parts", None)
