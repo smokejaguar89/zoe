@@ -111,6 +111,7 @@ def test_generate_and_save_image_uses_exact_healthy_prompt(
     image_client.generate_image.assert_called_once_with(
         prompt=expected_prompt,
         base_image_bytes=b"base",
+        base_image_mime_type="image/jpeg",
     )
     [saved] = image_repository.add.call_args.args
     assert saved.prompt == expected_prompt
@@ -192,4 +193,5 @@ def test_generate_and_save_image_uses_exact_stressed_prompt(
     image_client.generate_image.assert_called_once_with(
         prompt=expected_prompt,
         base_image_bytes=b"base",
+        base_image_mime_type="image/jpeg",
     )
